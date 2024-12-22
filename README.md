@@ -1,6 +1,5 @@
 # Holocorp Rewrite
 AGRF's Favorite Bot, but Better!
----
 ## What is this?
 The Thallium+Beat projects provides an API which returns the current lobby listing and player count in the XML format. Holocorp Overview fetches and parses these XML files to display them in a friendly format over in the #online-status channel in our [Discord server](https://discord.gg/cBeSdgXs9X).
 ## How does it work?
