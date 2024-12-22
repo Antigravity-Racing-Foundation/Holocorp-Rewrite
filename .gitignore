@@ -1,0 +1,14 @@
+# ignore pycache and shit
+__pycache__/
+
+# config files and such
+external/config.json
+external/credentials.txt
+external/credentials.txt.prod
+external/holocorp.workspace
+
+*.log
+
+# docker stuff
+Dockerfile
+entrypoint.sh
