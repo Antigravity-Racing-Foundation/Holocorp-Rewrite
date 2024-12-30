@@ -56,6 +56,9 @@ def parseWeaponArray(weaponArray, mode):
         return f"{functionFinalOutput} enabled".removeprefix(", ")
 
 def calculateGameProgress(progress, target, includeVitaWarning):
+
+    # TODO: Tourney progression
+
     progress = int(progress)
     target = int(target)
     vitaWarningPostfix = ""
@@ -211,6 +214,8 @@ def fetchLobbyList():
                 propertyPlayerCount = lobby.attrib["PlayerCount"]
                 propertyMiscSettings = ""
 
+                # TODO: Lobby duration timer
+
                 for stats in lobby.findall('GameStats'):
                     for config in stats:
                         if config.tag == "HostName": propertyLobbyName = config.text 
@@ -345,7 +350,6 @@ def fetchLobbyList():
                         if(config.tag == "TrackList"):
                             for bitmask in config:
                                 propertyTournamentTrackListIDs.append(bitmask.text)
-                                propertyTourneyTrackCount = trackList.attrib["totalEntries"]
 
 
                 # ---###--- ASSEMBLE PULSE LOBBY BLOCK ---###---

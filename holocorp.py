@@ -64,7 +64,7 @@ async def updateStatusMessage(desiredContent): # abstract of edit/send new messa
     if existingMessageId == 0:
         newMessage = await channel.send(desiredContent)
         existingMessageId = newMessage.id
-        logging.info("[updateStatusMessage] Status message not found, new message ID: " + str(existingMessageId))
+        logging.info(f"[updateStatusMessage] Status message not found, new message ID: {str(existingMessageId)}")
 
     else:
         targetMessage = await channel.fetch_message(existingMessageId)
