@@ -51,7 +51,7 @@ async def updateStatusMessage(desiredContent): # abstract of edit/send new messa
     global channel
 
     if statusMessageCache == desiredContent:
-        logging.debug["[updateStatusMessage] desiredContent matches cache, aborting!"]
+        logging.debug("[updateStatusMessage] desiredContent matches cache, aborting!")
         return("nothingToDo")
     logging.debug("[updateStatusMessage] Status message update routine started")
     existingMessageId = 0
