@@ -3,11 +3,14 @@ import requests
 import xml.etree.ElementTree as ET
 import logging
 import re
+from datetime import datetime
 from lookup_tables import *
 from config_handler import *
 import hashlib
 
 global appId
+# global lastTourneyDone
+# lastTourneyDone = "True"
 urlListing = configPull("apiLobbiesURL")
 urlCount = configPull("apiPlayersURL")
 showVitaWarning = configPull("showVitaWarning")
@@ -55,22 +58,62 @@ def parseWeaponArray(weaponArray, mode):
                 functionFinalOutput = f"{functionFinalOutput}, {key}"
         return f"{functionFinalOutput} enabled".removeprefix(", ")
 
+# TODO: Move logic to convertTourneyTrackList for more elegant progress reporting (underline current track in track list)
+
+# issues with this code block:
+# - if tourney ends before it finishes, race counter is stuck forever;
+# - can't possibly handle multiple tourneys going at the same time
+#
+# these critical bugs will likely be solved by:
+# TODO: differentiate lobbies by their unique GameName's and work from there; put tourney progress for each lobby into
+# an array that can handle multiple entries
+
+# def calculateTourneyProgress(raceProgress, raceTarget, raceCount, includeVitaWarning):
+#     raceProgress = int(raceProgress)
+#     raceTarget = int(raceTarget)
+#     raceCount = int(raceCount)
+#     vitaWarningPostfix = ""
+#     vitaWarningPrefix = ""
+#     global currentRaceNumber
+#     global lastTourneyDone
+#     global raceNumberAlreadyUpdated
+
+#     if lastTourneyDone == "True" and raceProgress == 0: # reset stuff only on next tourney load becasue if we reset it immediately
+#         currentRaceNumber = 1                           # after the old one ends, it'll report progress as 1 until it returns to lobby
+#         lastTourneyDone = "False"
+
+#     if includeVitaWarning == "True":
+#         vitaWarningPrefix = ", HOLD ON!"
+#         vitaWarningPostfix = "\n-# ‎   Due to a bug, Vita players will be kicked if someone joins mid-race. Please wait for the race to finish."
+
+#     if raceProgress <= raceTarget:
+#         raceNumberAlreadyUpdated = "False"
+#     elif raceNumberAlreadyUpdated == "False":
+#         currentRaceNumber += 1
+#         raceNumberAlreadyUpdated = "True"
+
+#         if currentRaceNumber > raceCount:
+#             lastTourneyDone = "True" # tourney end check
+#             currentRaceNumber -= 1 # this is kinda retarded but i like it :p
+    
+#     if raceProgress == 0 and currentRaceNumber == 1:
+#         return "" # tourney prestart check
+
+#     return f"\n**   >> TOURNEY IN PROGRESS ({currentRaceNumber}/{raceCount}){vitaWarningPrefix} <<**{vitaWarningPostfix}"
+
 def calculateGameProgress(progress, target, includeVitaWarning):
-
-    # TODO: Tourney progression
-
     progress = int(progress)
     target = int(target)
     vitaWarningPostfix = ""
     vitaWarningPrefix = ""
     if includeVitaWarning == "True":
-        vitaWarningPrefix = "HOLD ON, "
+        vitaWarningPrefix = ", HOLD ON!"
         vitaWarningPostfix = "\n-# ‎   Due to a bug, Vita players will be kicked if someone joins mid-race. Please wait for the race to finish."
 
     if progress <= target and progress != 0:
-        return f"\n**   >> {vitaWarningPrefix}RACE IN PROGRESS <<**{vitaWarningPostfix}"
+        return f"\n**   >> RACE IN PROGRESS{vitaWarningPrefix} <<**{vitaWarningPostfix}"
     elif progress > target:
-        return f"\n**   >> {vitaWarningPrefix}RETURNING TO LOBBY <<**{vitaWarningPostfix}"
+        return f"\n**   >> RETURNING TO LOBBY{vitaWarningPrefix} <<**{vitaWarningPostfix}"
     else:
         return ""
 
@@ -95,8 +138,6 @@ def convertTourneyTrackList(trackList, game):   # this function has a lot of for
     functionFinalOutput = f"{functionFinalOutput}]"
     return functionFinalOutput.replace("[ | ", "[")\
     .replace("[]", "") # hacky formatting stuff :p
-
-
 
 def convertPlayerList(playerList, game):
     platformLabelPSP = configPull("platformLabelPSP")
@@ -212,9 +253,11 @@ def fetchLobbyList():
                 propertyPlayerList = lobby.attrib["PlayerListCurrent"]
                 propertyWeaponsEnabled = lobby.attrib["GenericField1"]
                 propertyPlayerCount = lobby.attrib["PlayerCount"]
+                propertyCreateDate = lobby.attrib["GameCreateDt"]
                 propertyMiscSettings = ""
 
-                # TODO: Lobby duration timer
+                dtObject = datetime.fromisoformat(propertyCreateDate.replace("Z", "+00:00"))
+                propertyCreateDate = int(dtObject.timestamp())
 
                 for stats in lobby.findall('GameStats'):
                     for config in stats:
@@ -276,6 +319,7 @@ def fetchLobbyList():
 {propertyTrack} // \
 {propertySpeedClass} {propertyGameMode}{listingLapCount}\
 {propertyMiscSettings}**\
+\n-# ‎   <t:{propertyCreateDate}:R>\
 \n-# ‎   {weaponAddendum}\
 {playerListPrintable}\
 {progressAddendum}"
@@ -290,6 +334,7 @@ def fetchLobbyList():
 {propertyTrack} // \
 {propertySpeedClass} {propertyGameMode} ({propertyElimTarget})\
 {propertyMiscSettings}**\
+\n-# ‎   <t:{propertyCreateDate}:R>\
 \n-# ‎   {weaponAddendum}\
 {playerListPrintable}\
 {progressAddendum}"
@@ -303,6 +348,7 @@ def fetchLobbyList():
 {propertyTrack} // \
 {propertyGameMode} ({propertyZBTarget})\
 {propertyMiscSettings}**\
+\n-# ‎   <t:{propertyCreateDate}:R>\
 {playerListPrintable}\
 {progressAddendum}"
 
@@ -310,14 +356,17 @@ def fetchLobbyList():
                         trackList = convertTourneyTrackList(propertyTournamentTrackListIDs, "HD")
                         weaponAddendum = parseWeaponArray(propertyWeaponList, "Single Race") if propertyWeaponsEnabled == "1" else "Weapons disabled"
                         includeVitaWarning = "True" if showVitaWarning == "True" and "+Vita" in propertyPlayerList else "False"
+                        # progressAddendum = calculateTourneyProgress(propertyRaceProgress, propertyLapCount, propertyTourneyTrackCount, includeVitaWarning)
 
                         hdLobbyBlock = f"**   \
 {propertyLobbyName} ({propertyPlayerCount}/8) // \
 {propertySpeedClass} {propertyGameMode}{listingLapCount}\
 {propertyMiscSettings}**\
+\n-# ‎   <t:{propertyCreateDate}:R>\
 \n-# ‎   {trackList}\
 \n-# ‎   {weaponAddendum}\
 {playerListPrintable}"
+# {progressAddendum}"
 
                     case _:
                         pulseLobbyBlock = "\n! Parsing error.\n"
@@ -372,7 +421,7 @@ def fetchLobbyList():
 **   {propertyLobbyName} ({propertyPlayerCount}/{propertyMaximumPlayerCount}) \
 // {propertySpeedClass} {propertyGameMode} \
 {propertyWeaponsEnabled}**\
-\n   {trackList} \
+\n-# ‎   {trackList} \
 {playerListPrintable}"
 
                     case _:

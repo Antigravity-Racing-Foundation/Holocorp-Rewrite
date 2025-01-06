@@ -51,6 +51,7 @@ async def updateStatusMessage(desiredContent): # abstract of edit/send new messa
     global channel
 
     if statusMessageCache == desiredContent:
+        logging.debug["[updateStatusMessage] desiredContent matches cache, aborting!"]
         return("nothingToDo")
     logging.debug("[updateStatusMessage] Status message update routine started")
     existingMessageId = 0
@@ -74,7 +75,7 @@ async def updateStatusMessage(desiredContent): # abstract of edit/send new messa
 
 
 
-async def statusMessageHandler(statusMessage):
+async def statusMessageHandler(statusMessage): # decide what to post to updateStatusMessage
     global currentStatusAlreadyPosted
     currentBackendStatus = workspacePull("status")
     if (currentBackendStatus == "offline" or currentBackendStatus == "maintenance") and currentStatusAlreadyPosted != "True":
@@ -98,7 +99,7 @@ status_choices = [
 @commandTree.command(name="status", description="Change status message to `online`, `offline` or `maintenance` (clear_cache if status message stuck)", guild=None)
 @app_commands.choices(status_command=status_choices)
 @app_commands.default_permissions(permissions=0)
-async def status(interaction: discord.Interaction, status_command: str):
+async def status(interaction: discord.Interaction, status_command: str): # set backend status command
     global currentStatusAlreadyPosted
     global statusMessageCache
     currentStatusAlreadyPosted = "False" # if this command is invoked, it will probably need to update the status message
