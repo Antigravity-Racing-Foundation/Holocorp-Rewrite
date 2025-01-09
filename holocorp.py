@@ -202,6 +202,6 @@ async def on_ready():
     if workspacePull("status") == "online" and listLobbies.is_running() == False:
         listLobbies.start()
     else:
-        statusMessageHandler("dummy")
+        await statusMessageHandler(messageTemplate("standby"))
 
 client.run(tokenPull())
