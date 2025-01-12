@@ -146,6 +146,17 @@ async def events_error(interaction: discord.Interaction, error):
 
 
 
+# TODO: random track picker for lowly peasant users
+# features:
+# - pick game (pulse, hd, 2048, dlc and not for all)
+# - pick track count
+# - pick whether or not to try and find the most random tracks
+# - pick whether or not to announce the track (list) to chat
+# - funny
+
+
+
+
 activity_choices = [
     app_commands.Choice(name="playing", value="playing"),
     app_commands.Choice(name="watching", value="watching"),
