@@ -197,7 +197,10 @@ async def listLobbies():
     statusMessage = composeStatus()
     if statusMessage != "nothingToDo" and workspacePull("status") == "online":
         logging.info("[Holocorp Primary Loop] Got a new status message, posting...")
-        await statusMessageHandler(statusMessage)
+        try:
+            await statusMessageHandler(statusMessage)
+        except Exception as e:
+            logging.warning(f"[Holocorp Primary Loop] Discord shitteth itself with {e} :(")
 
 
 
