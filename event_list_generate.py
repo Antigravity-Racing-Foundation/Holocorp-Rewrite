@@ -12,7 +12,11 @@ def generateRandomTrack(trackList):
     "Mallavol", "Corridon 12", "Pro Tozo", "Syncopia", # index 12-15-25, not reversable
     "Empire Climb", "Altima", "Rockway Stadium", "Subway",
     "Sol", "Unity Square", "Queens Mall", "Downtown", 
-    "Capital Reach", "Metro Park"]
+    "Capital Reach", "Metro Park",
+    "Talon's Junction", "Moa Therma", "Metropia", "Arc Prime", # index 26-41, blackfaceable
+    "De Konstruct", "Tech De Ra", "The Amphiseum", "Fort Gale",     # i am aware that most of these are duplicated in
+    "Basilico", "Platinum Rush", "Vertica", "Outpost 7",            # the HD bank but i don't wanna fuck with that man
+    "Edgewinter", "Vostok Reef", "Gemini Dam", "Orcus"]
     match trackList:
         case "hd":
             if random.getrandbits(1) == 1:
@@ -34,6 +38,13 @@ def generateRandomTrack(trackList):
         
         case "2048":
             return trackBank[random.randint(16, 25)] 
+        
+        case "pulse" | "pulseDLC":
+            indexEnd = 37 if trackList == "pulse" else 41
+            if random.getrandbits(1) == 1:
+                return trackBank[random.randint(26, indexEnd)] + " Black"
+            else:
+                return trackBank[random.randint(26, indexEnd)] + " White"
 
 
 def generateRandomClass(game):
