@@ -5,6 +5,7 @@ import re
 import logging
 import sys
 import os
+import asyncio
 
 from discord import app_commands
 from discord.ext import commands
@@ -14,6 +15,7 @@ from discord.ext.commands import MissingPermissions
 from message_composer import *
 from config_handler import *
 from event_list_generate import generateEventList
+from event_list_generate import generateRandomTrack
 
 from pathlib import Path
 
@@ -146,13 +148,54 @@ async def events_error(interaction: discord.Interaction, error):
 
 
 
-# TODO: random track picker for lowly peasant users
-# features:
-# - pick game (pulse, hd, 2048, dlc and not for all)
-# - pick track count
-# - pick whether or not to try and find the most random tracks
-# - pick whether or not to announce the track (list) to chat
-# - funny
+game_choice = [
+    app_commands.Choice(name="WipEout HD", value="hd"),
+    app_commands.Choice(name="WipEout Pulse", value="pulse"),
+]
+binary_options = [
+    app_commands.Choice(name="True", value="True"),
+    app_commands.Choice(name="False", value="False"),
+]
+@commandTree.command(name="gimme_a_track", description="Gimme a random track, botty!", guild=None)
+@commands.cooldown(1, 10, commands.BucketType.user) 
+
+@app_commands.choices(game=game_choice)
+
+@app_commands.describe(count="How many tracks would you like?")
+
+@app_commands.choices(extra_tracks=binary_options)
+@app_commands.describe(extra_tracks="Zone tracks for HD and DLC tracks for Pulse")
+
+@app_commands.choices(announce=binary_options)
+@app_commands.describe(announce="Tell chat?")
+
+async def activity(interaction: discord.Interaction, game: str, count: int = 1, extra_tracks: str = "False", announce: str = "False"):
+
+    if count < 0:
+        await interaction.response.send_message(ephemeral=True, content="no, fuck you")
+    elif count > 24:
+        await interaction.response.send_message(ephemeral=True, content="that's a bit too many tracks (let's not do more than 24, okay?)")
+
+    anouncement_prefix = "Our track iiiiiiis:" if count == 1 else "Our track list iiiiiiis:"
+
+    match game:
+        case "hd":
+            trackRange = "hd" if extra_tracks == "False" else "hdZone"
+        case "pulse":
+            trackRange = "pulse" if extra_tracks == "False" else "pulseDLC"
+        case _:
+            await interaction.response.send_message(ephemeral=True, content="okay i'm sorry but how the fuck did you even manage to pick an invalid option?")
+
+    trackList = ""
+    for i in range (0, count):
+        trackList = f"{trackList}\n{generateRandomTrack(trackRange)}"
+        asyncio.sleep(0.05) # random is time-based so we sleep
+
+
+    if announce == "True":
+        await interaction.response.send_message(ephemeral=False, content=f"{anouncement_prefix}\n```{trackList}!```")
+    else:
+        await interaction.response.send_message(ephemeral=True, content=f"here you go :3\n```{trackList}```")
 
 
 
