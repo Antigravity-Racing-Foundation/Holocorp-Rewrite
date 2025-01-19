@@ -9,8 +9,11 @@ from config_handler import *
 import hashlib
 
 global appId
-# global lastTourneyDone
-# lastTourneyDone = "True"
+
+# this dict will have lobby name as key, current race, last update and tourney finished flag
+tourneyProgressByLobby = {}
+tourneyProgressFunctionIsIdle = "False"
+
 urlListing = configPull("apiLobbiesURL")
 urlCount = configPull("apiPlayersURL")
 showVitaWarning = configPull("showVitaWarning")
@@ -58,48 +61,42 @@ def parseWeaponArray(weaponArray, mode):
                 functionFinalOutput = f"{functionFinalOutput}, {key}"
         return f"{functionFinalOutput} enabled".removeprefix(", ")
 
-# TODO: Move logic to convertTourneyTrackList for more elegant progress reporting (underline current track in track list)
-
-# issues with this code block:
-# - if tourney ends before it finishes, race counter is stuck forever;
-# - can't possibly handle multiple tourneys going at the same time
-#
-# these critical bugs will likely be solved by:
-# TODO: differentiate lobbies by their unique GameName's and work from there; put tourney progress for each lobby into
-# an array that can handle multiple entries
-
-# def calculateTourneyProgress(raceProgress, raceTarget, raceCount, includeVitaWarning):
-#     raceProgress = int(raceProgress)
-#     raceTarget = int(raceTarget)
-#     raceCount = int(raceCount)
-#     vitaWarningPostfix = ""
-#     vitaWarningPrefix = ""
-#     global currentRaceNumber
-#     global lastTourneyDone
-#     global raceNumberAlreadyUpdated
-
-#     if lastTourneyDone == "True" and raceProgress == 0: # reset stuff only on next tourney load becasue if we reset it immediately
-#         currentRaceNumber = 1                           # after the old one ends, it'll report progress as 1 until it returns to lobby
-#         lastTourneyDone = "False"
-
-#     if includeVitaWarning == "True":
-#         vitaWarningPrefix = ", HOLD ON!"
-#         vitaWarningPostfix = "\n-# ‎   Due to a bug, Vita players will be kicked if someone joins mid-race. Please wait for the race to finish."
-
-#     if raceProgress <= raceTarget:
-#         raceNumberAlreadyUpdated = "False"
-#     elif raceNumberAlreadyUpdated == "False":
-#         currentRaceNumber += 1
-#         raceNumberAlreadyUpdated = "True"
-
-#         if currentRaceNumber > raceCount:
-#             lastTourneyDone = "True" # tourney end check
-#             currentRaceNumber -= 1 # this is kinda retarded but i like it :p
+def calculateTourneyProgress(raceProgress, raceTarget, raceCount, lobbyName, includeVitaWarning):
+    global tourneyProgressByLobby
+    global tourneyProgressFunctionIsIdle
+    raceProgress = int(raceProgress)
+    raceTarget = int(raceTarget)
+    raceCount = int(raceCount)
+    vitaWarningPostfix = ""
+    vitaWarningPrefix = ""
     
-#     if raceProgress == 0 and currentRaceNumber == 1:
-#         return "" # tourney prestart check
+    tourneyProgressFunctionIsIdle = "False"
 
-#     return f"\n**   >> TOURNEY IN PROGRESS ({currentRaceNumber}/{raceCount}){vitaWarningPrefix} <<**{vitaWarningPostfix}"
+    currentRaceNumber, raceNumberAlreadyUpdated, lastTourneyDone = tourneyProgressByLobby.setdefault(lobbyName, (1, "False", "False"))
+
+    if lastTourneyDone == "True" and raceProgress == 0: # reset stuff only on next tourney load becasue if we reset it immediately
+        currentRaceNumber = 1                           # after the old one ends, it'll report progress as 1 until it returns to lobby
+        lastTourneyDone = "False"
+
+    if includeVitaWarning == "True":
+        vitaWarningPrefix = ", HOLD ON!"
+        vitaWarningPostfix = "\n-# ‎   Due to a bug, Vita players will be kicked if someone joins mid-race. Please wait for the race to finish."
+
+    if raceProgress <= raceTarget:
+        raceNumberAlreadyUpdated = "False"
+    elif raceNumberAlreadyUpdated == "False":
+        currentRaceNumber += 1
+        raceNumberAlreadyUpdated = "True"
+        if currentRaceNumber > raceCount:
+            lastTourneyDone = "True" # tourney end check
+            currentRaceNumber -= 1 # this is kinda retarded but i like it :p
+    
+    tourneyProgressByLobby[lobbyName] = (currentRaceNumber, raceNumberAlreadyUpdated, lastTourneyDone)
+
+    if raceProgress == 0 and currentRaceNumber == 1:
+        return "", -1 # tourney prestart check
+
+    return f"\n**   >> TOURNEY IN PROGRESS{vitaWarningPrefix} <<**{vitaWarningPostfix}", currentRaceNumber
 
 def calculateGameProgress(progress, target, includeVitaWarning):
     progress = int(progress)
@@ -117,7 +114,7 @@ def calculateGameProgress(progress, target, includeVitaWarning):
     else:
         return ""
 
-def convertTourneyTrackList(trackList, game):   # this function has a lot of formatting stuff going on
+def convertTourneyTrackList(trackList, game, currentRaceNumber = -1):   # this function has a lot of formatting stuff going on
     match game:                                 # if you see some random characters that you don't know the purpose of, don't think about it
         case "HD":
             IDToName = convertGameLevelToName
@@ -128,7 +125,10 @@ def convertTourneyTrackList(trackList, game):   # this function has a lot of for
     trackParserCounter = 0
 
     for track in trackList:
-        functionFinalOutput = f"{functionFinalOutput} | {IDToName(track)}"
+        if currentRaceNumber - 1 == trackParserCounter:
+            functionFinalOutput = f"{functionFinalOutput} | **__{IDToName(track)}__**"
+        else:
+            functionFinalOutput = f"{functionFinalOutput} | {IDToName(track)}"
         trackParserCounter += 1
 
         if trackParserCounter == 4:
@@ -207,6 +207,8 @@ def convertPlayerList(playerList, game):
     return playerListPrintable
 
 def fetchLobbyList():
+    global tourneyProgressFunctionIsIdle 
+
     xmlData = requests.get(urlListing) # variable initialization
     try:
         with open("../GetLobbyListing.xml", "r") as exampleXMLFile:
@@ -234,6 +236,17 @@ def fetchLobbyList():
         logging.debug("[Lobby XML Parser] XML passed is empty")
         return "No lobbies are up."
 
+    # tournament progression listing bugfix
+    # okay basically listing breaks if the tournament ends prematurely because the function can't account for that so the variables aren't reset
+    # so the next tournament race counter is off by some number and you can't fix it and it'll stay like that forever
+    # which is why we watch to make sure that if the tournament function isn't invoked, the dict is nuked, so that leftover variables (if any) aren't
+    # passed down
+    # this could be done per-lobby as well but that would be way more complicated than this single bool and i honestly cannot be arsed to do that
+    # for the specific case of someone holding two tournaments then one of them ending prematurely then that person restarting the tournament and wondering
+    # why it's broken
+
+    tourneyProgressFunctionIsIdle = "True"
+
     for lobby in root.findall('Lobby'): # let's get xml'ing!!!! this loop will parse each lobby, put its properties into variables and compose it into a text block
         appId = lobby.attrib["AppId"] # the appId determines what game the parsing will be done for
             
@@ -247,6 +260,7 @@ def fetchLobbyList():
                 propertyTournamentTrackListIDs = []
                 propertyWeaponList = []
 
+                propertyGameName = lobby.attrib["GameName"]
                 propertyTrack = convertGameLevelToName(lobby.attrib["GameLevel"])
                 propertyGameMode = convertRulesetToMode(lobby.attrib["RuleSet"])
                 propertySpeedClass, propertyDefaultLapCount = convertPlayerSkillToClass(lobby.attrib["PlayerSkillLevel"])
@@ -286,16 +300,8 @@ def fetchLobbyList():
                             propertyTournamentTrackListIDs.append(track.text)
                             propertyTourneyTrackCount = trackList.attrib["totalEntries"]
 
-                #   Allow me to explain the process above:
-                #   If a property has been allocated its own variable, it's for the sake of code readability and modularity
-                #   Track and weapon lists are static, however - they cannot change on the API side and the LUT to convert
-                # their array indexes to meaninful data is constant  
-                #   There are also about 24 of such elements in total, and running an IF on each would likely be expensive
-                #   The previous implementation dumped each and every single property into an array which was a nightmare
-                # to deal with later - that's one of the reasons we're rewriting Holocorp in the first place
-                #   Now instead of a magical array with its meaning written on some random napkin we have actual variables! This may or may not
-                # have affected performance, but I don't care.
-                # -Bonkers
+                # this approach to paring the xml may not be the most optimal but it's much more readable than what we had before and
+                # it's also good enough performance-wise
 
                 playerListPrintable = convertPlayerList(propertyPlayerList, "hd")
 
@@ -319,8 +325,7 @@ def fetchLobbyList():
 {propertyTrack} // \
 {propertySpeedClass} {propertyGameMode}{listingLapCount}\
 {propertyMiscSettings}**\
-\n-# ‎   <t:{propertyCreateDate}:R>\
-\n-# ‎   {weaponAddendum}\
+\n-# ‎   <t:{propertyCreateDate}:R>; {weaponAddendum}\
 {playerListPrintable}\
 {progressAddendum}"
 
@@ -334,8 +339,7 @@ def fetchLobbyList():
 {propertyTrack} // \
 {propertySpeedClass} {propertyGameMode} ({propertyElimTarget})\
 {propertyMiscSettings}**\
-\n-# ‎   <t:{propertyCreateDate}:R>\
-\n-# ‎   {weaponAddendum}\
+\n-# ‎   <t:{propertyCreateDate}:R>; {weaponAddendum}\
 {playerListPrintable}\
 {progressAddendum}"
 
@@ -353,23 +357,24 @@ def fetchLobbyList():
 {progressAddendum}"
 
                     case "Tournament":
-                        trackList = convertTourneyTrackList(propertyTournamentTrackListIDs, "HD")
                         weaponAddendum = parseWeaponArray(propertyWeaponList, "Single Race") if propertyWeaponsEnabled == "1" else "Weapons disabled"
                         includeVitaWarning = "True" if showVitaWarning == "True" and "+Vita" in propertyPlayerList else "False"
-                        # progressAddendum = calculateTourneyProgress(propertyRaceProgress, propertyLapCount, propertyTourneyTrackCount, includeVitaWarning)
+                        progressAddendum, currentRaceNumber = calculateTourneyProgress(propertyRaceProgress, propertyLapCount, \
+                        propertyTourneyTrackCount, propertyGameName, includeVitaWarning)
+                        trackList = convertTourneyTrackList(propertyTournamentTrackListIDs, "HD", currentRaceNumber)
 
                         hdLobbyBlock = f"**   \
 {propertyLobbyName} ({propertyPlayerCount}/8) // \
-{propertySpeedClass} {propertyGameMode}{listingLapCount}\
+{propertyTourneyTrackCount} Race {propertySpeedClass} {propertyGameMode}{listingLapCount}\
 {propertyMiscSettings}**\
-\n-# ‎   <t:{propertyCreateDate}:R>\
+\n-# ‎   <t:{propertyCreateDate}:R>; {weaponAddendum}\
 \n-# ‎   {trackList}\
-\n-# ‎   {weaponAddendum}\
-{playerListPrintable}"
-# {progressAddendum}"
+{playerListPrintable}\
+{progressAddendum}"
 
                     case _:
-                        pulseLobbyBlock = "\n! Parsing error.\n"
+                        hdLobbyBlock = "\n! Parsing error.\n"
+                        logging.warning("[fetchLobbyList] Error while parsing HD XML!")
             
                 parsingResultsHD = f"{parsingResultsHD}\n{hdLobbyBlock}\n"
 
@@ -399,7 +404,8 @@ def fetchLobbyList():
                         if(config.tag == "TrackList"):
                             for bitmask in config:
                                 propertyTournamentTrackListIDs.append(bitmask.text)
-
+                        if(config.tag == "RaceInProgress"):
+                            propertyRaceInProgress = "\n**   >> RACE IN PROGRESS... HOLD ON! <<**\n-# ‎   When a Pulse race is ongoing, the lobby is hidden in-game. Please be patient!" if config.text == "1" else ""
 
                 # ---###--- ASSEMBLE PULSE LOBBY BLOCK ---###---
 
@@ -413,7 +419,8 @@ def fetchLobbyList():
 // {propertyTrack} \
 // {propertySpeedClass} {propertyGameMode} \
 {propertyWeaponsEnabled}** \
-{playerListPrintable}"
+{playerListPrintable}\
+{propertyRaceInProgress}"
 
                     case "Tournament":
                         trackList = convertTourneyTrackList(propertyTournamentTrackListIDs, "Pulse")
@@ -422,10 +429,12 @@ def fetchLobbyList():
 // {propertySpeedClass} {propertyGameMode} \
 {propertyWeaponsEnabled}**\
 \n-# ‎   {trackList} \
-{playerListPrintable}"
+{playerListPrintable}\
+{propertyRaceInProgress}"
 
                     case _:
                         pulseLobbyBlock = "\n! Parsing error.\n"
+                        logging.warning("[fetchLobbyList] Error while parsing Pulse XML!")
 
                 parsingResultsPulse = f"{parsingResultsPulse}\n{pulseLobbyBlock}\n"
 
@@ -439,11 +448,17 @@ def fetchLobbyList():
 
     # ---###--- PARSING IS DONE, COMPOSING INTO FINAL OUTPUT ---###---
 
+    # ...but first, let's nuke the tourney dict, just in case (see this function's start for explanation)
+
+    if tourneyProgressFunctionIsIdle == "True" and tourneyProgressByLobby:
+        tourneyProgressByLobby.clear()
 
     if parsingResultsPulse == "" and parsingResultsHD != "":
         return(f"\nLobby listing (HD):{parsingResultsHD}")
     elif parsingResultsPulse != "" and parsingResultsHD == "":
         return(f"\nLobby listing (Pulse):{parsingResultsPulse}")
+    elif parsingResultsHD == "" and parsingResultsPulse == "":
+        return "No lobbies are up."
     else:
         return(f"\nLobby listing (HD):{parsingResultsHD}\nLobby listing (Pulse):{parsingResultsPulse}")
 
