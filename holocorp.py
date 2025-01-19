@@ -171,7 +171,7 @@ binary_options = [
 
 async def activity(interaction: discord.Interaction, game: str, count: int = 1, extra_tracks: str = "False", announce: str = "False"):
 
-    if count < 0:
+    if count < 1:
         await interaction.response.send_message(ephemeral=True, content="no, fuck you")
     elif count > 24:
         await interaction.response.send_message(ephemeral=True, content="that's a bit too many tracks (let's not do more than 24, okay?)")
