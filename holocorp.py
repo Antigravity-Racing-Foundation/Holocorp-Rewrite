@@ -255,6 +255,8 @@ async def on_ready():
 
     await commandTree.sync(guild=discord.Object(id=int(configPull("guildID"))))
     logging.info('Login successful (in as {0.user})'.format(client))
+    workspaceStore("HASH", "lobbies")
+    workspaceStore("HASH", "players")
     logging.info("[onReady] Initializing the status message")
     if workspacePull("status") == "online" and listLobbies.is_running() == False:
         listLobbies.start()
