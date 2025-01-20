@@ -6,6 +6,9 @@ from xml_parser import *
 import string
 from logging import *
 
+global lobbyListing
+lobbyListing = ""
+
 def composeStatus():
     global lobbyListing
 
