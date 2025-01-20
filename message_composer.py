@@ -15,14 +15,14 @@ def composeStatus():
     fetchedLobbyList = fetchLobbyList()
     if fetchedLobbyList != "nothingToDo":
         lobbyListing = fetchedLobbyList # this should ensure that we always have the current listing in memory and that it doesn't get
-        lobbyListingIsSame = "False"    # overwritten when that's not needed
+        lobbyListingIsSame = False    # overwritten when that's not needed
     else:
-        lobbyListingIsSame = "True"
+        lobbyListingIsSame = True
 
     playerCount, playerCountIsSame = fetchPlayerCount()
 
 
-    if lobbyListingIsSame == "True" and playerCountIsSame == "True":
+    if lobbyListingIsSame == True and playerCountIsSame == True:
         return "nothingToDo"
     else:
         return messageTemplate("online").replace("!PLAYERCOUNT", playerCount)\

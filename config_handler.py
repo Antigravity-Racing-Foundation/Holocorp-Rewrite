@@ -4,6 +4,7 @@ import json
 import os.path
 import logging
 import re
+from distutils.util import strtobool
 
 def configCreate():
     configInitial = { 
@@ -36,7 +37,11 @@ def configPull(elementName):
     try:
         with open("./external/config.json", "r") as configJsonFile:
             configFile = json.load(configJsonFile)
-            return configFile[elementName]
+            configElement = configFile[elementName]
+            try:
+                return bool(strtobool(configElement))
+            except ValueError:
+                return configElement
     except FileNotFoundError:
         configCreate()
     except:

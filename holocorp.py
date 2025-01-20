@@ -6,6 +6,7 @@ import logging
 import sys
 import os
 import asyncio
+from distutils.util import strtobool
 
 from discord import app_commands
 from discord.ext import commands
@@ -80,9 +81,9 @@ async def updateStatusMessage(desiredContent): # abstract of edit/send new messa
 async def statusMessageHandler(statusMessage): # decide what to post to updateStatusMessage
     global currentStatusAlreadyPosted
     currentBackendStatus = workspacePull("status")
-    if (currentBackendStatus == "offline" or currentBackendStatus == "maintenance") and currentStatusAlreadyPosted != "True":
+    if (currentBackendStatus == "offline" or currentBackendStatus == "maintenance") and currentStatusAlreadyPosted != True:
         await updateStatusMessage(messageTemplate(currentBackendStatus))
-        currentStatusAlreadyPosted = "True"
+        currentStatusAlreadyPosted = True
         if listLobbies.is_running() == True:
             listLobbies.stop()
             logging.debug("[statusMessageHandler] Stopped lobby listing")
@@ -104,7 +105,7 @@ status_choices = [
 async def status(interaction: discord.Interaction, status_command: str): # set backend status command
     global currentStatusAlreadyPosted
     global statusMessageCache
-    currentStatusAlreadyPosted = "False" # if this command is invoked, it will probably need to update the status message
+    currentStatusAlreadyPosted = False # if this command is invoked, it will probably need to update the status message
 
     await interaction.response.send_message(ephemeral=True, content=f"Setting backend status to `{status_command.capitalize()}`")
 
@@ -171,6 +172,9 @@ binary_options = [
 
 async def activity(interaction: discord.Interaction, game: str, count: int = 1, extra_tracks: str = "False", announce: str = "False"):
 
+    extra_tracks = bool(strtobool(extra_tracks))
+    announce = bool(strtobool(announce))
+
     if count < 1:
         await interaction.response.send_message(ephemeral=True, content="no, fuck you")
     elif count > 24:
@@ -180,9 +184,9 @@ async def activity(interaction: discord.Interaction, game: str, count: int = 1, 
 
     match game:
         case "hd":
-            trackRange = "hd" if extra_tracks == "False" else "hdZone"
+            trackRange = "hd" if extra_tracks == False else "hdZone"
         case "pulse":
-            trackRange = "pulse" if extra_tracks == "False" else "pulseDLC"
+            trackRange = "pulse" if extra_tracks == False else "pulseDLC"
         case _:
             await interaction.response.send_message(ephemeral=True, content="okay i'm sorry but how the fuck did you even manage to pick an invalid option?")
 
@@ -192,7 +196,7 @@ async def activity(interaction: discord.Interaction, game: str, count: int = 1, 
         asyncio.sleep(0.05) # random is time-based so we sleep
 
 
-    if announce == "True":
+    if announce == True:
         await interaction.response.send_message(ephemeral=False, content=f"{anouncement_prefix}\n```{trackList}!```")
     else:
         await interaction.response.send_message(ephemeral=True, content=f"here you go :3\n```{trackList}```")

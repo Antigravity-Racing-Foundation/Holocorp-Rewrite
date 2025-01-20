@@ -12,7 +12,7 @@ global appId
 
 # this dict will have lobby name as key, current race, last update and tourney finished flag
 tourneyProgressByLobby = {}
-tourneyProgressFunctionIsIdle = "False"
+tourneyProgressFunctionIsIdle = False
 
 urlListing = configPull("apiLobbiesURL")
 urlCount = configPull("apiPlayersURL")
@@ -70,25 +70,25 @@ def calculateTourneyProgress(raceProgress, raceTarget, raceCount, lobbyName, inc
     vitaWarningPostfix = ""
     vitaWarningPrefix = ""
     
-    tourneyProgressFunctionIsIdle = "False"
+    tourneyProgressFunctionIsIdle = False
 
-    currentRaceNumber, raceNumberAlreadyUpdated, lastTourneyDone = tourneyProgressByLobby.setdefault(lobbyName, (1, "False", "False"))
+    currentRaceNumber, raceNumberAlreadyUpdated, lastTourneyDone = tourneyProgressByLobby.setdefault(lobbyName, (1, False, False))
 
-    if lastTourneyDone == "True" and raceProgress == 0: # reset stuff only on next tourney load becasue if we reset it immediately
+    if lastTourneyDone == True and raceProgress == 0: # reset stuff only on next tourney load becasue if we reset it immediately
         currentRaceNumber = 1                           # after the old one ends, it'll report progress as 1 until it returns to lobby
-        lastTourneyDone = "False"
+        lastTourneyDone = False
 
-    if includeVitaWarning == "True":
+    if includeVitaWarning == True:
         vitaWarningPrefix = ", HOLD ON!"
         vitaWarningPostfix = "\n-# ‎   Due to a bug, Vita players will be kicked if someone joins mid-race. Please wait for the race to finish."
 
     if raceProgress <= raceTarget:
-        raceNumberAlreadyUpdated = "False"
-    elif raceNumberAlreadyUpdated == "False":
+        raceNumberAlreadyUpdated = False
+    elif raceNumberAlreadyUpdated == False:
         currentRaceNumber += 1
-        raceNumberAlreadyUpdated = "True"
+        raceNumberAlreadyUpdated = True
         if currentRaceNumber > raceCount:
-            lastTourneyDone = "True" # tourney end check
+            lastTourneyDone = True # tourney end check
             currentRaceNumber -= 1 # this is kinda retarded but i like it :p
     
     tourneyProgressByLobby[lobbyName] = (currentRaceNumber, raceNumberAlreadyUpdated, lastTourneyDone)
@@ -103,7 +103,7 @@ def calculateGameProgress(progress, target, includeVitaWarning):
     target = int(target)
     vitaWarningPostfix = ""
     vitaWarningPrefix = ""
-    if includeVitaWarning == "True":
+    if includeVitaWarning == True:
         vitaWarningPrefix = ", HOLD ON!"
         vitaWarningPostfix = "\n-# ‎   Due to a bug, Vita players will be kicked if someone joins mid-race. Please wait for the race to finish."
 
@@ -148,7 +148,7 @@ def convertPlayerList(playerList, game):
     global vitaFlag
     global debugFlag
 
-    if game == "pulse" and configPull("pulseShowRegions") == "False": # choo wanted (PSP) regardless of bot config so this was born
+    if game == "pulse" and configPull("pulseShowRegions") == False: # choo wanted (PSP) regardless of bot config so this was born
         playerList = f"{playerList},"\
         .replace(",", f" {platformLabelPSP},")\
         .rstrip(",")\
@@ -198,7 +198,7 @@ def convertPlayerList(playerList, game):
         else:
             entryRegion = debugFlag
 
-        if "Vita" in entryPlatform and showVitaRegion == "False":
+        if "Vita" in entryPlatform and showVitaRegion == False:
             entryRegion = vitaFlag
 
         entry.add_info(entryRegion, entryPlatform)
@@ -245,7 +245,7 @@ def fetchLobbyList():
     # for the specific case of someone holding two tournaments then one of them ending prematurely then that person restarting the tournament and wondering
     # why it's broken
 
-    tourneyProgressFunctionIsIdle = "True"
+    tourneyProgressFunctionIsIdle = True
 
     for lobby in root.findall('Lobby'): # let's get xml'ing!!!! this loop will parse each lobby, put its properties into variables and compose it into a text block
         appId = lobby.attrib["AppId"] # the appId determines what game the parsing will be done for
@@ -317,7 +317,7 @@ def fetchLobbyList():
                 match propertyGameMode:
                     case "Single Race":
                         weaponAddendum = parseWeaponArray(propertyWeaponList, "Single Race") if propertyWeaponsEnabled == "1" else "Weapons disabled"
-                        includeVitaWarning = "True" if showVitaWarning == "True" and "+Vita" in propertyPlayerList else "False"
+                        includeVitaWarning = True if showVitaWarning == True and "+Vita" in propertyPlayerList else False
                         progressAddendum = calculateGameProgress(propertyRaceProgress, propertyLapCount, includeVitaWarning)
 
                         hdLobbyBlock = f"**   \
@@ -331,7 +331,7 @@ def fetchLobbyList():
 
                     case "Eliminator":
                         weaponAddendum = parseWeaponArray(propertyWeaponList, "Eliminator")
-                        includeVitaWarning = "True" if showVitaWarning == "True" and "+Vita" in propertyPlayerList else "False"
+                        includeVitaWarning = True if showVitaWarning == True and "+Vita" in propertyPlayerList else False
                         progressAddendum = calculateGameProgress(propertyRaceProgress, propertyElimTarget, includeVitaWarning)
 
                         hdLobbyBlock = f"**   \
@@ -344,7 +344,7 @@ def fetchLobbyList():
 {progressAddendum}"
 
                     case "Zone Battle":
-                        includeVitaWarning = "True" if showVitaWarning == "True" and "+Vita" in propertyPlayerList else "False"
+                        includeVitaWarning = True if showVitaWarning == True and "+Vita" in propertyPlayerList else False
                         progressAddendum = calculateGameProgress(propertyRaceProgress, propertyZBTarget, includeVitaWarning)
 
                         hdLobbyBlock = f"**   \
@@ -358,7 +358,7 @@ def fetchLobbyList():
 
                     case "Tournament":
                         weaponAddendum = parseWeaponArray(propertyWeaponList, "Single Race") if propertyWeaponsEnabled == "1" else "Weapons disabled"
-                        includeVitaWarning = "True" if showVitaWarning == "True" and "+Vita" in propertyPlayerList else "False"
+                        includeVitaWarning = True if showVitaWarning == True and "+Vita" in propertyPlayerList else False
                         progressAddendum, currentRaceNumber = calculateTourneyProgress(propertyRaceProgress, propertyLapCount, \
                         propertyTourneyTrackCount, propertyGameName, includeVitaWarning)
                         trackList = convertTourneyTrackList(propertyTournamentTrackListIDs, "HD", currentRaceNumber)
@@ -450,7 +450,7 @@ def fetchLobbyList():
 
     # ...but first, let's nuke the tourney dict, just in case (see this function's start for explanation)
 
-    if tourneyProgressFunctionIsIdle == "True" and tourneyProgressByLobby:
+    if tourneyProgressFunctionIsIdle == True and tourneyProgressByLobby:
         tourneyProgressByLobby.clear()
 
     if parsingResultsPulse == "" and parsingResultsHD != "":
@@ -464,7 +464,7 @@ def fetchLobbyList():
 
 def fetchPlayerCount():
     xmlData = requests.get(urlCount)
-    isSameFlag = "False"
+    isSameFlag = False
 
     try:
         root = ET.fromstring(xmlData.content)
@@ -476,7 +476,7 @@ def fetchPlayerCount():
 
     xmlHash = hashlib.sha1(xmlData.content).hexdigest()
     if xmlHash == workspacePull("players"):
-        isSameFlag = "True"
+        isSameFlag = True
     else: 
         workspaceStore(xmlHash, "players")
 
