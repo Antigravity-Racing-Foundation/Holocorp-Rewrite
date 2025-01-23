@@ -45,7 +45,6 @@ client = Client(intents=discord.Intents.default()) # some discord api bullshit i
 commandTree = app_commands.CommandTree(client) # command tree init (all my homies hate command trees)
 
 logging.basicConfig(filename='holocorp.log', encoding='utf-8', level=logging.NOTSET)
-logger = logging.getLogger("agrf_bot")
 logging.getLogger().addHandler(logging.StreamHandler(sys.stdout))
 
 loggingLevel = logging.getLevelName(configPull("loggingLevel").upper())
@@ -107,7 +106,7 @@ status_choices = [
     app_commands.Choice(name="offline", value="offline"),
     app_commands.Choice(name="maintenance", value="maintenance")
 ]
-@commandTree.command(name="status", description="Change status message to `online`, `offline` or `maintenance` (clear_cache if status message stuck)", guild=None)
+@commandTree.command(name="status", description="Change status message to `online`, `offline` or `maintenance`", guild=None)
 @app_commands.choices(status_command=status_choices)
 @app_commands.default_permissions(permissions=0)
 async def status(interaction: discord.Interaction, status_command: str): # set backend status command
@@ -123,7 +122,7 @@ async def status(interaction: discord.Interaction, status_command: str): # set b
         workspaceStore("HASH", "lobbies")
         workspaceStore("HASH", "players")
         listLobbies.start()
-        logging.debug("[status] Started lobby listing routine and cleared cache")
+        logging.debug("[status] Cleared cache and started lobby listing routine")
     else:
         workspaceStore(status_command, "status")
         if listLobbies.is_running(): listLobbies.stop()
@@ -180,7 +179,7 @@ binary_options = [
 
 async def trackgen(interaction: discord.Interaction, game: str, count: int = 1, extra_tracks: str = "False", announce: str = "False"):
 
-    logging.debug("[trackgen] Command invoked")
+    logging.debug(f"[trackgen] Command invoked ({game}, {count}, extra_tracks = {extra_tracks}, announce = {announce})")
 
     global trackGeneratorCache
 
@@ -246,7 +245,7 @@ activity_choices = [
 ]
 @commandTree.command(name="activity", description="Set bot activity to `Playing` or `Watching` with an arbitrary name or clear it", guild=None)
 @app_commands.choices(activity_type=activity_choices)
-@app_commands.describe(activity_name="Activity name (Playing _WipEout Fusion_ <-- this)")
+@app_commands.describe(activity_name="What are we playin?")
 @app_commands.default_permissions(permissions=0)
 async def activity(interaction: discord.Interaction, activity_type: str, activity_name: str = None):
     if activity_type == "clear":
