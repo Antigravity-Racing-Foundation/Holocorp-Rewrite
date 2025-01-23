@@ -26,7 +26,8 @@ def configCreate():
         "platformLabelPS3" : "(PS3)",
         "platformLabelVita" : "(Vita)",
         "platformLabelRPCS3" : "(RPCS3)",
-        "experimentalFeatures" : "False"
+        "experimentalFeatures" : "False",
+        "loggingLevel" : "Info"
     }
     with open("./external/config.json", "w", encoding="utf-8") as configJsonFile:
         json.dump(configInitial, configJsonFile, ensure_ascii=False, indent=4)
