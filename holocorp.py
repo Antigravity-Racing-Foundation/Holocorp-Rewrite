@@ -31,6 +31,8 @@ currentStatusAlreadyPosted = "None"
 statusMessageCache = "None"
 channel = "None"
 
+trackGeneratorCache = []
+
 class Client(discord.Client):
     def __init__(self, *, intents: discord.Intents):
         super().__init__(intents=intents)
@@ -42,11 +44,17 @@ client = Client(intents=discord.Intents.default()) # some discord api bullshit i
 
 commandTree = app_commands.CommandTree(client) # command tree init (all my homies hate command trees)
 
-logging.basicConfig(filename='holocorp.log', encoding='utf-8', level=logging.DEBUG)
+logging.basicConfig(filename='holocorp.log', encoding='utf-8', level=logging.NOTSET)
 logger = logging.getLogger("agrf_bot")
 logging.getLogger().addHandler(logging.StreamHandler(sys.stdout))
 
+loggingLevel = logging.getLevelName(configPull("loggingLevel").upper())
 
+try:
+    logging.getLogger().setLevel(loggingLevel)
+except Exception as e:
+    logging.getLogger().setLevel(logging.INFO)
+    logging.error(f"Logging setup failed with {e}; defaulting to INFO")
 
 
 async def updateStatusMessage(desiredContent): # abstract of edit/send new message in status channel
@@ -127,7 +135,7 @@ async def status(interaction: discord.Interaction, status_command: str): # set b
 @status.error
 async def status_error(interaction: discord.Interaction, error):
     if isinstance(error, discord.app_commands.errors.MissingPermissions):
-        logging.info("[status Command Error Handler] some cuck tried to change status without the perms lmao")
+        logging.info("[status Command Error Handler] Invoke attempted by a peasant, but perms are missing lol")
         await interaction.response.send_message(ephemeral=True, content="You don't have the permission to do this")
 
 
@@ -141,7 +149,7 @@ async def events(interaction: discord.Interaction):
 @events.error
 async def events_error(interaction: discord.Interaction, error):
     if isinstance(error, discord.app_commands.errors.MissingPermissions):
-        logging.info("[events Command Error Handler] some cuck tried to fuck with events without the perms lmao")
+        logging.info("[events Command Error Handler] Invoke attempted by a peasant, but perms are missing lol")
         await interaction.response.send_message(ephemeral=True, content="You don't have the permission to do this")
     else:
         raise(error)
@@ -170,15 +178,23 @@ binary_options = [
 @app_commands.choices(announce=binary_options)
 @app_commands.describe(announce="Tell chat?")
 
-async def activity(interaction: discord.Interaction, game: str, count: int = 1, extra_tracks: str = "False", announce: str = "False"):
+async def trackgen(interaction: discord.Interaction, game: str, count: int = 1, extra_tracks: str = "False", announce: str = "False"):
+
+    logging.debug("[trackgen] Command invoked")
+
+    global trackGeneratorCache
 
     extra_tracks = bool(strtobool(extra_tracks))
     announce = bool(strtobool(announce))
 
     if count < 1:
+        logging.debug("[trackgen] Passed count is less than 1, aborting...")
         await interaction.response.send_message(ephemeral=True, content="no, fuck you")
+        return
     elif count > 24:
+        logging.debug("[trackgen] Passed count is more than 24, aborting...")
         await interaction.response.send_message(ephemeral=True, content="that's a bit too many tracks (let's not do more than 24, okay?)")
+        return
 
     anouncement_prefix = "Our track iiiiiiis:" if count == 1 else "Our track list iiiiiiis:"
 
@@ -188,17 +204,36 @@ async def activity(interaction: discord.Interaction, game: str, count: int = 1, 
         case "pulse":
             trackRange = "pulse" if extra_tracks == False else "pulseDLC"
         case _:
+            logging.debug("[trackgen] Invalid game argument passed... somehow?")
             await interaction.response.send_message(ephemeral=True, content="okay i'm sorry but how the fuck did you even manage to pick an invalid option?")
+            return
+        
+    logging.debug(f"[trackgen] Game is {trackRange}")
 
     trackList = ""
     for i in range (0, count):
-        trackList = f"{trackList}\n{generateRandomTrack(trackRange)}"
-        asyncio.sleep(0.05) # random is time-based so we sleep
 
+        for attempts in range (16):
+            await asyncio.sleep(0.05) # random is time-based so we sleep
+            generatedTrack = generateRandomTrack(trackRange)
+            if generatedTrack not in trackGeneratorCache:
+                trackGeneratorCache.append(generatedTrack)
+                trackList = f"{trackList}\n{generatedTrack}"
+                logging.debug("[trackgen] Found valid track")
+                break
+        else:
+            logging.debug("[trackgen] Exceeded maximum attempt count")
+            trackList = f"{trackList}\n{generateRandomTrack(trackRange)}"
+        
+        if len(trackGeneratorCache) > 6:
+            trackGeneratorCache = []
+            logging.debug("[trackgen] Popping cache array (exceeded 6 elements)")
 
     if announce == True:
+        logging.debug("[trackgen] Sending public response...")
         await interaction.response.send_message(ephemeral=False, content=f"{anouncement_prefix}\n```{trackList}!```")
     else:
+        logging.debug("[trackgen] Sending private response...")
         await interaction.response.send_message(ephemeral=True, content=f"here you go :3\n```{trackList}```")
 
 
@@ -217,9 +252,11 @@ async def activity(interaction: discord.Interaction, activity_type: str, activit
     if activity_type == "clear":
         await client.change_presence(activity=None)
         await interaction.response.send_message(ephemeral=True, content=f"Presence activity cleared (dropped activity_name you might've passed)")
+        return
 
     if activity_name == None:
         await interaction.response.send_message(ephemeral=True, content=f"Sooo what are we {activity_type}? (specify `activity_name` for non clear types dummy)")
+        return
 
     match activity_type:
         case "playing":
@@ -233,7 +270,7 @@ async def activity(interaction: discord.Interaction, activity_type: str, activit
 @activity.error
 async def activity_error(interaction: discord.Interaction, error):
     if isinstance(error, discord.app_commands.errors.MissingPermissions):
-        logging.info("[activity Command Error Handler] some cuck tried to change the activity without the perms lmao")
+        logging.info("[activity Command Error Handler] Invoke attempted by a peasant, but perms are missing lol")
         await interaction.response.send_message(ephemeral=True, content="You don't have the permission to do this")
 
 
@@ -243,7 +280,7 @@ async def activity_error(interaction: discord.Interaction, error):
 async def listLobbies():
     statusMessage = composeStatus()
     if statusMessage != "nothingToDo" and workspacePull("status") == "online":
-        logging.info("[Holocorp Primary Loop] Got a new status message, posting...")
+        logging.debug("[Holocorp Primary Loop] Got a new status message, posting...")
         try:
             await statusMessageHandler(statusMessage)
         except Exception as e:
