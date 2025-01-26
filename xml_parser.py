@@ -443,7 +443,7 @@ def fetchLobbyList():
 
 
             case _:
-                logging.info("Unknown AppId on listing, ignoring...")
+                logging.debug("Unknown AppId on listing, ignoring...")
 
 
     # ---###--- PARSING IS DONE, COMPOSING INTO FINAL OUTPUT ---###---
