@@ -14,7 +14,7 @@ from discord.ext import tasks
 from discord.ext.commands import MissingPermissions
 
 from message_composer import *
-from config_handler import *
+from io_handler import *
 from event_list_generate import generateEventList
 from event_list_generate import generateRandomTrack
 

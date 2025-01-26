@@ -5,7 +5,7 @@ import logging
 import re
 from datetime import datetime
 from lookup_tables import *
-from config_handler import *
+from io_handler import *
 import hashlib
 
 global appId

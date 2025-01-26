@@ -1,5 +1,4 @@
 # Guess from the file name what this is.
-# If you guessed "config handler" - you're incorrect! It actually does *all* of the bot's IO.
 import json
 import os.path
 import logging

@@ -2,7 +2,7 @@
 import sys
 import random
 import datetime 
-from config_handler import *
+from io_handler import *
 
 def generateRandomTrack(trackList):
     random.seed()
