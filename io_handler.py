@@ -45,7 +45,7 @@ def configPull(elementName):
     except FileNotFoundError:
         configCreate()
     except:
-        print("No such variable in config or unable to parse JSON")
+        logging.error("[configPull] No such variable in config or unable to parse JSON")
         return "null"
 
 def tokenPull():
@@ -83,7 +83,7 @@ def workspacePull(dataType):
             match = re.search(rf"{pattern}(\w+)", workspace)
             return match.group(1)
     except:
-        logging.warning("[Config Handler, workspacePull] Something went wrong, please investigate.")
+        logging.error("[workspacePull] Something went wrong, please investigate.")
         exit()
 
 def messageTemplate(templateType):
@@ -94,5 +94,14 @@ def messageTemplate(templateType):
         with open(f"./external/message_templates/{templateFileName}", "r") as templateFile:
             return templateFile.read()
     except:
-        logging.warning(f"[Config Handler, messageTemplate, {templateType}] Template missing or invalid.")
-        return("missingTemplateError")
+        logging.warning(f"[messageTemplate, {templateType}] Template missing or invalid.")
+        return("Missing template")
+
+def loadReplies():
+    try:
+        with open(f"./external/message_templates/ping_reply_list.md", "r") as replyListFile:
+            replyList = replyListFile.read()
+        replyList = replyList.split("|||")
+        return [reply.strip() for reply in replyList]
+    except:
+        logging.warning(f"[loadReplies] Something went wrong, please investigate.")
