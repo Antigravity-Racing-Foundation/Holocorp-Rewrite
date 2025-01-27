@@ -5,6 +5,7 @@ import re
 import logging
 import sys
 import os
+import random
 import asyncio
 from distutils.util import strtobool
 
@@ -32,6 +33,8 @@ statusMessageCache = "None"
 channel = "None"
 
 trackGeneratorCache = []
+
+pingReplies = loadReplies()
 
 class Client(discord.Client):
     def __init__(self, *, intents: discord.Intents):
@@ -302,5 +305,20 @@ async def on_ready():
         listLobbies.start()
     else:
         await statusMessageHandler(messageTemplate("standby"))
+
+
+
+
+@client.event
+async def on_message(message):
+    logging.debug("[onMessage] Triggered")
+
+    if message.author.bot:
+        logging.debug("[onMessage] Aborted, author is client")
+        return
+
+    if client.user in message.mentions:
+        logging.debug(f"Replying to {message.author}")
+        await message.reply(pingReplies[random.randint(0, len(pingReplies) - 1)], mention_author=True)
 
 client.run(tokenPull())
