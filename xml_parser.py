@@ -21,6 +21,12 @@ vitaFlag = configPull("emojiVitaFlagID")
 debugFlag = configPull("emojiDebugFlagID")
 showVitaRegion = configPull("showVitaRegion")
 
+platformLabelPSP = configPull("platformLabelPSP")
+platformLabelPPSSPP = configPull("platformLabelPPSSPP")
+platformLabelPS3 = configPull("platformLabelPS3")
+platformLabelVita = configPull("platformLabelVita")
+platformLabelRPCS3 = configPull("platformLabelRPCS3")
+
 def parseWeaponArray(weaponArray, mode):
     logging.debug(f"[Weapon array parser] Start parsing weapon list for {mode}")
 
@@ -140,11 +146,11 @@ def convertTourneyTrackList(trackList, game, currentRaceNumber = -1):   # this f
     .replace("[]", "") # hacky formatting stuff :p
 
 def convertPlayerList(playerList, game):
-    platformLabelPSP = configPull("platformLabelPSP")
-    platformLabelPPSSPP = configPull("platformLabelPPSSPP")
-    platformLabelPS3 = configPull("platformLabelPS3")
-    platformLabelVita = configPull("platformLabelVita")
-    platformLabelRPCS3 = configPull("platformLabelRPCS3")
+    global platformLabelPSP
+    global platformLabelPPSSPP
+    global platformLabelPS3
+    global platformLabelVita
+    global platformLabelRPCS3
     global vitaFlag
     global debugFlag
 
@@ -209,7 +215,7 @@ def convertPlayerList(playerList, game):
 def fetchLobbyList():
     global tourneyProgressFunctionIsIdle 
 
-    xmlData = requests.get(urlListing) # variable initialization
+    xmlData = requests.get(urlListing)
     try:
         with open("../GetLobbyListing.xml", "r") as exampleXMLFile:
             xmlOfflineData = exampleXMLFile.read()
@@ -449,7 +455,6 @@ def fetchLobbyList():
     # ---###--- PARSING IS DONE, COMPOSING INTO FINAL OUTPUT ---###---
 
     # ...but first, let's nuke the tourney dict, just in case (see this function's start for explanation)
-
     if tourneyProgressFunctionIsIdle == True and tourneyProgressByLobby:
         tourneyProgressByLobby.clear()
 
@@ -480,4 +485,6 @@ def fetchPlayerCount():
     else: 
         workspaceStore(xmlHash, "players")
 
-    return ("1 player is currently logged in.", isSameFlag) if playerCount == "1" else ("!NOPLAYERS", isSameFlag) if playerCount == "0" else (f"{playerCount} players are currently logged in.", isSameFlag)
+    return ("1 player is currently logged in.", isSameFlag) if playerCount == "1" \
+    else ("!NOPLAYERS", isSameFlag) if playerCount == "0"\
+    else (f"{playerCount} players are currently logged in.", isSameFlag)
