@@ -319,6 +319,6 @@ async def on_message(message):
 
     if client.user in message.mentions:
         logging.debug(f"Replying to {message.author}")
-        await message.reply(pingReplies[random.randint(0, len(pingReplies) - 1)], mention_author=True)
+        await message.reply(random.choice(pingReplies).replace("!TARGETMESSAGE", message.content), mention_author=True)
 
 client.run(tokenPull())
