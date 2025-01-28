@@ -35,6 +35,8 @@ channel = "None"
 trackGeneratorCache = []
 
 pingReplies = loadReplies()
+pingRepliesEnabled = True
+pingRepliesRigged = False
 
 class Client(discord.Client):
     def __init__(self, *, intents: discord.Intents):
@@ -277,6 +279,58 @@ async def activity_error(interaction: discord.Interaction, error):
 
 
 
+action_choices = [
+    app_commands.Choice(name="disable", value="disable"),
+    app_commands.Choice(name="enable", value="enable"),
+    app_commands.Choice(name="reload_reply_list", value="reload"),
+    app_commands.Choice(name="set_next_reply", value="rig")
+]
+@commandTree.command(name="reply_control", description="Toggle or reload ping reply functionality", guild=None)
+@app_commands.choices(action_command=action_choices)
+@app_commands.default_permissions(permissions=0)
+async def status(interaction: discord.Interaction, action_command: str, rigged_message: str = ""):
+    global pingRepliesEnabled
+    global pingReplies
+    global pingRepliesRigged
+    global pingReplyRiggedMessage
+
+    match action_command:
+        case "disable":
+            pingRepliesEnabled = False
+            await interaction.response.send_message(ephemeral=True, content=f"Set ping reply status to `Disabled`")
+            return
+
+        case "enable":
+            pingRepliesEnabled = True
+            await interaction.response.send_message(ephemeral=True, content=f"Set ping reply status to `Enabled`")
+            return
+
+        case "reload":
+            pingReplies = loadReplies()
+            pingRepliesRigged= False
+            pingReplyRiggedMessage = "" 
+            await interaction.response.send_message(ephemeral=True, content=f"Reply list loaded!")
+            return
+
+        case "rig":
+            if rigged_message == "":
+                await interaction.response.send_message(ephemeral=True, content=f"am i just supposed to be silent then? use `disable` for that, dummy")
+                return
+            else:
+                pingRepliesRigged = True
+                pingReplyRiggedMessage = rigged_message
+                await interaction.response.send_message(ephemeral=True, content=f"okie, next time i'll say [{rigged_message}]! (reload_reply_list to cancel)")
+
+
+
+@status.error
+async def status_error(interaction: discord.Interaction, error):
+    if isinstance(error, discord.app_commands.errors.MissingPermissions):
+        logging.info("[status Command Error Handler] Invoke attempted by a peasant, but perms are missing lol")
+        await interaction.response.send_message(ephemeral=True, content="You don't have the permission to do this")
+
+
+
 
 @tasks.loop(seconds=int(configPull("apiPollRate")))
 async def listLobbies():
@@ -313,12 +367,31 @@ async def on_ready():
 async def on_message(message):
     logging.debug("[onMessage] Triggered")
 
+    global pingRepliesRigged
+    global pingReplyRiggedMessage
+
     if message.author.bot:
         logging.debug("[onMessage] Aborted, author is client")
         return
 
-    if client.user in message.mentions:
-        logging.debug(f"Replying to {message.author}")
-        await message.reply(random.choice(pingReplies).replace("!TARGETMESSAGE", message.content), mention_author=True)
+    if client.user in message.mentions and pingRepliesEnabled:
+
+        if pingRepliesRigged:
+            logging.debug(f"[onMessage] Replying with the rigged message of [{pingReplyRiggedMessage}] to {message.author}")
+
+            targetMessage = str(message.content).replace(f"<@{client.user.id}>", "").lstrip()
+            await message.reply(pingReplyRiggedMessage.replace("!TARGETMESSAGE", targetMessage), mention_author=True)
+
+            pingRepliesRigged = False
+            pingReplyRiggedMessage = ""
+
+            logging.debug("[onMessage] Reset rig parameters")
+
+            return
+
+        logging.debug(f"[onMessage] Replying to {message.author}")
+
+        targetMessage = str(message.content).replace(f"<@{client.user.id}>", "").lstrip()
+        await message.reply(random.choice(pingReplies).replace("!TARGETMESSAGE", targetMessage), mention_author=True)
 
 client.run(tokenPull())
