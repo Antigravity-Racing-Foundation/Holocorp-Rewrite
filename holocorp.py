@@ -1,4 +1,10 @@
 # This is the entry point for the bot. This file does the Discord API handling.
+
+# TODO: ditch holocorp.workspace
+# TODO: add full configuration reload command
+# TODO: implement available lobby spots reminder
+# TODO: pull as much ui text as possible from .md templates
+
 import discord
 import datetime
 import re
@@ -37,6 +43,8 @@ trackGeneratorCache = []
 pingReplies = loadReplies()
 pingRepliesEnabled = True
 pingRepliesRigged = False
+
+currentBackendStatus = configPull("defaultBackendStatus")
 
 class Client(discord.Client):
     def __init__(self, *, intents: discord.Intents):
@@ -92,7 +100,8 @@ async def updateStatusMessage(desiredContent): # abstract of edit/send new messa
 
 async def statusMessageHandler(statusMessage): # decide what to post to updateStatusMessage
     global currentStatusAlreadyPosted
-    currentBackendStatus = workspacePull("status")
+    global currentBackendStatus
+
     if (currentBackendStatus == "offline" or currentBackendStatus == "maintenance") and currentStatusAlreadyPosted != True:
         await updateStatusMessage(messageTemplate(currentBackendStatus))
         currentStatusAlreadyPosted = True
@@ -117,19 +126,20 @@ status_choices = [
 async def status(interaction: discord.Interaction, status_command: str): # set backend status command
     global currentStatusAlreadyPosted
     global statusMessageCache
+    global currentBackendStatus
     currentStatusAlreadyPosted = False # if this command is invoked, it will probably need to update the status message
 
     await interaction.response.send_message(ephemeral=True, content=f"Setting backend status to `{status_command.capitalize()}`")
 
     if status_command == "online" and listLobbies.is_running() == False:
-        workspaceStore(status_command, "status")
+        currentBackendStatus = status_command
         statusMessageCache = ""
         workspaceStore("HASH", "lobbies")
         workspaceStore("HASH", "players")
         listLobbies.start()
         logging.debug("[status] Cleared cache and started lobby listing routine")
     else:
-        workspaceStore(status_command, "status")
+        currentBackendStatus = status_command
         if listLobbies.is_running(): listLobbies.stop()
         await statusMessageHandler(messageTemplate(status_command))
         logging.debug("[status] Stopped lobby listing routine")
@@ -285,7 +295,7 @@ action_choices = [
     app_commands.Choice(name="reload_reply_list", value="reload"),
     app_commands.Choice(name="set_next_reply", value="rig")
 ]
-@commandTree.command(name="reply_control", description="Toggle or reload ping reply functionality", guild=None)
+@commandTree.command(name="reply_control", description="Toggle, reload or rig ping reply functionality", guild=None)
 @app_commands.choices(action_command=action_choices)
 @app_commands.default_permissions(permissions=0)
 async def status(interaction: discord.Interaction, action_command: str, rigged_message: str = ""):
@@ -335,7 +345,7 @@ async def status_error(interaction: discord.Interaction, error):
 @tasks.loop(seconds=int(configPull("apiPollRate")))
 async def listLobbies():
     statusMessage = composeStatus()
-    if statusMessage != "nothingToDo" and workspacePull("status") == "online":
+    if statusMessage != "nothingToDo" and currentBackendStatus == "online":
         logging.debug("[Holocorp Primary Loop] Got a new status message, posting...")
         try:
             await statusMessageHandler(statusMessage)
@@ -355,7 +365,7 @@ async def on_ready():
     workspaceStore("HASH", "lobbies")
     workspaceStore("HASH", "players")
     logging.info("[onReady] Initializing the status message")
-    if workspacePull("status") == "online" and listLobbies.is_running() == False:
+    if currentBackendStatus == "online" and listLobbies.is_running() == False:
         listLobbies.start()
     else:
         await statusMessageHandler(messageTemplate("standby"))
