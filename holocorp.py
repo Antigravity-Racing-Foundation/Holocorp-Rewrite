@@ -386,10 +386,11 @@ async def on_message(message):
 
     if client.user in message.mentions and pingRepliesEnabled:
 
+        targetMessage = str(message.content).replace(f"<@{client.user.id}>", "").lstrip()
+
         if pingRepliesRigged:
             logging.debug(f"[onMessage] Replying with the rigged message of [{pingReplyRiggedMessage}] to {message.author}")
 
-            targetMessage = str(message.content).replace(f"<@{client.user.id}>", "").lstrip()
             await message.reply(pingReplyRiggedMessage.replace("!TARGETMESSAGE", targetMessage), mention_author=True)
 
             pingRepliesRigged = False
@@ -401,7 +402,6 @@ async def on_message(message):
 
         logging.debug(f"[onMessage] Replying to {message.author}")
 
-        targetMessage = str(message.content).replace(f"<@{client.user.id}>", "").lstrip()
         await message.reply(random.choice(pingReplies).replace("!TARGETMESSAGE", targetMessage), mention_author=True)
 
 client.run(tokenPull())
