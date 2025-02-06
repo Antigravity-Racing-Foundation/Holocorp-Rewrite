@@ -1,9 +1,8 @@
 # This is the entry point for the bot. This file does the Discord API handling.
 
-# TODO: ditch holocorp.workspace
-# TODO: add full configuration reload command
 # TODO: implement available lobby spots reminder
 # TODO: pull as much ui text as possible from .md templates
+# TODO: event preping feature
 
 import discord
 import datetime
@@ -25,26 +24,16 @@ from io_handler import *
 from event_list_generate import generateEventList
 from event_list_generate import generateRandomTrack
 
+from states import volatileStateSet
+from states import firmStateSet
+
 from pathlib import Path
 
-with open("./external/holocorp.workspace", "r+") as workspaceFile: # initialize workspace
-    workspaceStart = f"hashAPILobby: HASH\nhashAPIPlayers: HASH\nbackendStatus: {configPull("defaultBackendStatus")}"
-    workspaceFile.seek(0)
+volatileStates = volatileStateSet()
+firmStates = firmStateSet()
 
 intents = discord.Intents.default()
 intents.message_content = True
-
-currentStatusAlreadyPosted = "None"
-statusMessageCache = "None"
-channel = "None"
-
-trackGeneratorCache = []
-
-pingReplies = loadReplies()
-pingRepliesEnabled = True
-pingRepliesRigged = False
-
-currentBackendStatus = configPull("defaultBackendStatus")
 
 class Client(discord.Client):
     def __init__(self, *, intents: discord.Intents):
@@ -53,45 +42,41 @@ class Client(discord.Client):
     async def setup_hook(self):
         await commandTree.sync()
 
-client = Client(intents=discord.Intents.default()) # some discord api bullshit i pulled from past me's holocorp-classic
+client = Client(intents=discord.Intents.default())
 
-commandTree = app_commands.CommandTree(client) # command tree init (all my homies hate command trees)
+commandTree = app_commands.CommandTree(client)
 
-logging.basicConfig(filename='holocorp.log', encoding='utf-8', level=logging.NOTSET)
+logging.basicConfig(encoding='utf-8', level=logging.NOTSET)
 logging.getLogger().addHandler(logging.StreamHandler(sys.stdout))
 
-loggingLevel = logging.getLevelName(configPull("loggingLevel").upper())
-
 try:
-    logging.getLogger().setLevel(loggingLevel)
+    logging.getLogger().setLevel(logging.getLevelName(configPull("loggingLevel").upper()))
 except Exception as e:
     logging.getLogger().setLevel(logging.INFO)
     logging.error(f"Logging setup failed with {e}; defaulting to INFO")
 
 
 async def updateStatusMessage(desiredContent): # abstract of edit/send new message in status channel
-    global statusMessageCache
-    global channel
 
-    if statusMessageCache == desiredContent:
+    if volatileStates.statusMessageCache == desiredContent:
         logging.debug("[updateStatusMessage] desiredContent matches cache, aborting!")
         return("nothingToDo")
     logging.debug("[updateStatusMessage] Status message update routine started")
     existingMessageId = 0
-    statusMessageCache = desiredContent
+    volatileStates.statusMessageCache = desiredContent
 
-    async for previous_message in channel.history(limit=2):
+    async for previous_message in firmStates.channel.history(limit=2):
         if previous_message.author == client.user:
             existingMessageId = previous_message.id
             logging.debug("[updateStatusMessage] existingMessageId defined!")
 
     if existingMessageId == 0:
-        newMessage = await channel.send(desiredContent)
+        newMessage = await firmStates.channel.send(desiredContent)
         existingMessageId = newMessage.id
         logging.info(f"[updateStatusMessage] Status message not found, new message ID: {str(existingMessageId)}")
 
     else:
-        targetMessage = await channel.fetch_message(existingMessageId)
+        targetMessage = await firmStates.channel.fetch_message(existingMessageId)
         await targetMessage.edit(content=desiredContent)
         logging.debug("[updateStatusMessage] Message updated!")
 
@@ -99,12 +84,10 @@ async def updateStatusMessage(desiredContent): # abstract of edit/send new messa
 
 
 async def statusMessageHandler(statusMessage): # decide what to post to updateStatusMessage
-    global currentStatusAlreadyPosted
-    global currentBackendStatus
 
-    if (currentBackendStatus == "offline" or currentBackendStatus == "maintenance") and currentStatusAlreadyPosted != True:
-        await updateStatusMessage(messageTemplate(currentBackendStatus))
-        currentStatusAlreadyPosted = True
+    if (firmStates.backendStatus == "offline" or firmStates.backendStatus == "maintenance") and volatileStates.currentStatusAlreadyPosted != True:
+        await updateStatusMessage(messageTemplate(firmStates.backendStatus))
+        volatileStates.currentStatusAlreadyPosted = True
         if listLobbies.is_running() == True:
             listLobbies.stop()
             logging.debug("[statusMessageHandler] Stopped lobby listing")
@@ -124,27 +107,27 @@ status_choices = [
 @app_commands.choices(status_command=status_choices)
 @app_commands.default_permissions(permissions=0)
 async def status(interaction: discord.Interaction, status_command: str): # set backend status command
-    global currentStatusAlreadyPosted
-    global statusMessageCache
-    global currentBackendStatus
-    currentStatusAlreadyPosted = False # if this command is invoked, it will probably need to update the status message
+    volatileStates.currentStatusAlreadyPosted = False # if this command is invoked, it will probably need to update the status message
 
     await interaction.response.send_message(ephemeral=True, content=f"Setting backend status to `{status_command.capitalize()}`")
 
     if status_command == "online" and listLobbies.is_running() == False:
-        currentBackendStatus = status_command
-        statusMessageCache = ""
-        workspaceStore("HASH", "lobbies")
-        workspaceStore("HASH", "players")
+        firmStates.backendStatus = status_command
+
+        volatileStates.statusMessageCache = "None"
+        volatileStates.hashAPILobby = "None"
+        volatileStates.hashAPIPlayers = "None"
+        
         listLobbies.start()
+        
         logging.debug("[status] Cleared cache and started lobby listing routine")
     else:
-        currentBackendStatus = status_command
+        firmStates.backendStatus = status_command
         if listLobbies.is_running(): listLobbies.stop()
         await statusMessageHandler(messageTemplate(status_command))
         logging.debug("[status] Stopped lobby listing routine")
 
-    logging.debug("[status] New backend status is now stored in the workspace")
+    logging.debug("[status] New backend status is now stored in firmStates")
 
 @status.error
 async def status_error(interaction: discord.Interaction, error):
@@ -196,8 +179,6 @@ async def trackgen(interaction: discord.Interaction, game: str, count: int = 1, 
 
     logging.debug(f"[trackgen] Command invoked ({game}, {count}, extra_tracks = {extra_tracks}, announce = {announce})")
 
-    global trackGeneratorCache
-
     extra_tracks = bool(strtobool(extra_tracks))
     announce = bool(strtobool(announce))
 
@@ -230,8 +211,8 @@ async def trackgen(interaction: discord.Interaction, game: str, count: int = 1, 
         for attempts in range (16):
             await asyncio.sleep(0.05) # random is time-based so we sleep
             generatedTrack = generateRandomTrack(trackRange)
-            if generatedTrack not in trackGeneratorCache:
-                trackGeneratorCache.append(generatedTrack)
+            if generatedTrack not in volatileStates.trackGeneratorCache:
+                volatileStates.trackGeneratorCache.append(generatedTrack)
                 trackList = f"{trackList}\n{generatedTrack}"
                 logging.debug("[trackgen] Found valid track")
                 break
@@ -239,8 +220,8 @@ async def trackgen(interaction: discord.Interaction, game: str, count: int = 1, 
             logging.debug("[trackgen] Exceeded maximum attempt count")
             trackList = f"{trackList}\n{generateRandomTrack(trackRange)}"
         
-        if len(trackGeneratorCache) > 6:
-            trackGeneratorCache = []
+        if len(volatileStates.trackGeneratorCache) > 6:
+            volatileStates.trackGeneratorCache = []
             logging.debug("[trackgen] Popping cache array (exceeded 6 elements)")
 
     if announce == True:
@@ -289,36 +270,32 @@ async def activity_error(interaction: discord.Interaction, error):
 
 
 
-action_choices = [
+reply_choices = [
     app_commands.Choice(name="disable", value="disable"),
     app_commands.Choice(name="enable", value="enable"),
     app_commands.Choice(name="reload_reply_list", value="reload"),
     app_commands.Choice(name="set_next_reply", value="rig")
 ]
 @commandTree.command(name="reply_control", description="Toggle, reload or rig ping reply functionality", guild=None)
-@app_commands.choices(action_command=action_choices)
+@app_commands.choices(action_command=reply_choices)
 @app_commands.default_permissions(permissions=0)
-async def status(interaction: discord.Interaction, action_command: str, rigged_message: str = ""):
-    global pingRepliesEnabled
-    global pingReplies
-    global pingRepliesRigged
-    global pingReplyRiggedMessage
+async def replies(interaction: discord.Interaction, action_command: str, rigged_message: str = ""):
 
     match action_command:
         case "disable":
-            pingRepliesEnabled = False
+            volatileStates.pingRepliesEnabled = False
             await interaction.response.send_message(ephemeral=True, content=f"Set ping reply status to `Disabled`")
             return
 
         case "enable":
-            pingRepliesEnabled = True
+            volatileStates.pingRepliesEnabled = True
             await interaction.response.send_message(ephemeral=True, content=f"Set ping reply status to `Enabled`")
             return
 
         case "reload":
-            pingReplies = loadReplies()
-            pingRepliesRigged= False
-            pingReplyRiggedMessage = "" 
+            volatileStates.pingReplies = loadReplies()
+            volatileStates.pingRepliesRigged= False
+            volatileStates.pingReplyRiggedMessage = "" 
             await interaction.response.send_message(ephemeral=True, content=f"Reply list loaded!")
             return
 
@@ -327,16 +304,49 @@ async def status(interaction: discord.Interaction, action_command: str, rigged_m
                 await interaction.response.send_message(ephemeral=True, content=f"am i just supposed to be silent then? use `disable` for that, dummy")
                 return
             else:
-                pingRepliesRigged = True
-                pingReplyRiggedMessage = rigged_message
+                volatileStates.pingRepliesRigged = True
+                volatileStates.pingReplyRiggedMessage = rigged_message
                 await interaction.response.send_message(ephemeral=True, content=f"okie, next time i'll say [{rigged_message}]! (reload_reply_list to cancel)")
 
-
-
-@status.error
-async def status_error(interaction: discord.Interaction, error):
+@replies.error
+async def replies_error(interaction: discord.Interaction, error):
     if isinstance(error, discord.app_commands.errors.MissingPermissions):
-        logging.info("[status Command Error Handler] Invoke attempted by a peasant, but perms are missing lol")
+        logging.info("[replies Command Error Handler] Invoke attempted by a peasant, but perms are missing lol")
+        await interaction.response.send_message(ephemeral=True, content="You don't have the permission to do this")
+
+
+
+
+reset_choices = [
+    app_commands.Choice(name="partial", value="partial"),
+    app_commands.Choice(name="full", value="full")
+]
+@commandTree.command(name="reset", description="Start from a clean slate (partial if things are stuck, full for configuration changes)", guild=None)
+@app_commands.choices(reset_command=reset_choices)
+@app_commands.default_permissions(permissions=0)
+async def reset(interaction: discord.Interaction, reset_command: str):
+
+    # FIXME: invoke status change logic on full bot reset! move the logic out of the slash command into another async function,
+    # then call it in both that one and this one
+
+    logging.info(f"[reset] A {reset_command} reset has been requested!")
+
+    match reset_command:
+        case "partial":
+            volatileStates.reset()
+            await interaction.response.send_message(ephemeral=True, content=f"Bot's volatile states reset!")
+        
+        case "full":
+            volatileStates.reset()
+            firmStates.reset()
+            status(volatileStates.backendStatus)
+            firmStates.channel = client.get_channel(int(configPull("statusMessageChannelID")))
+            await interaction.response.send_message(ephemeral=True, content=f"Wiped everything! Fresh stuff has been pulled from config and logic has been reset.")
+        
+@activity.error
+async def reset_error(interaction: discord.Interaction, error):
+    if isinstance(error, discord.app_commands.errors.MissingPermissions):
+        logging.info("[reset Command Error Handler] Invoke attempted by a peasant, but perms are missing lol")
         await interaction.response.send_message(ephemeral=True, content="You don't have the permission to do this")
 
 
@@ -345,7 +355,7 @@ async def status_error(interaction: discord.Interaction, error):
 @tasks.loop(seconds=int(configPull("apiPollRate")))
 async def listLobbies():
     statusMessage = composeStatus()
-    if statusMessage != "nothingToDo" and currentBackendStatus == "online":
+    if statusMessage != "nothingToDo" and firmStates.backendStatus == "online":
         logging.debug("[Holocorp Primary Loop] Got a new status message, posting...")
         try:
             await statusMessageHandler(statusMessage)
@@ -357,15 +367,14 @@ async def listLobbies():
 
 @client.event
 async def on_ready():
-    global channel
-    channel = client.get_channel(int(configPull("statusMessageChannelID")))
+    firmStates.channel = client.get_channel(int(configPull("statusMessageChannelID")))
 
     await commandTree.sync(guild=discord.Object(id=int(configPull("guildID"))))
     logging.info('Login successful (in as {0.user})'.format(client))
-    workspaceStore("HASH", "lobbies")
-    workspaceStore("HASH", "players")
+    volatileStates.hashAPILobby = "None"
+    volatileStates.hashAPIPlayers = "None"
     logging.info("[onReady] Initializing the status message")
-    if currentBackendStatus == "online" and listLobbies.is_running() == False:
+    if firmStates.backendStatus == "online" and listLobbies.is_running() == False:
         listLobbies.start()
     else:
         await statusMessageHandler(messageTemplate("standby"))
@@ -377,24 +386,21 @@ async def on_ready():
 async def on_message(message):
     logging.debug("[onMessage] Triggered")
 
-    global pingRepliesRigged
-    global pingReplyRiggedMessage
-
     if message.author.bot:
         logging.debug("[onMessage] Aborted, author is client")
         return
 
-    if client.user in message.mentions and pingRepliesEnabled:
+    if client.user in message.mentions and volatileStates.pingRepliesEnabled:
 
         targetMessage = str(message.content).replace(f"<@{client.user.id}>", "").lstrip()
 
-        if pingRepliesRigged:
-            logging.debug(f"[onMessage] Replying with the rigged message of [{pingReplyRiggedMessage}] to {message.author}")
+        if volatileStates.pingRepliesRigged:
+            logging.debug(f"[onMessage] Replying with the rigged message of [{volatileStates.pingReplyRiggedMessage}] to {message.author}")
 
-            await message.reply(pingReplyRiggedMessage.replace("!TARGETMESSAGE", targetMessage), mention_author=True)
+            await message.reply(volatileStates.pingReplyRiggedMessage.replace("!TARGETMESSAGE", targetMessage), mention_author=True)
 
-            pingRepliesRigged = False
-            pingReplyRiggedMessage = ""
+            volatileStates.pingRepliesRigged = False
+            volatileStates.pingReplyRiggedMessage = ""
 
             logging.debug("[onMessage] Reset rig parameters")
 
@@ -402,6 +408,6 @@ async def on_message(message):
 
         logging.debug(f"[onMessage] Replying to {message.author}")
 
-        await message.reply(random.choice(pingReplies).replace("!TARGETMESSAGE", targetMessage), mention_author=True)
+        await message.reply(random.choice(volatileStates.pingReplies).replace("!TARGETMESSAGE", targetMessage), mention_author=True)
 
 client.run(tokenPull())
