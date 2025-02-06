@@ -9,3 +9,4 @@ external/holocorp.workspace
 
 Dockerfile
 entrypoint.sh
+build
