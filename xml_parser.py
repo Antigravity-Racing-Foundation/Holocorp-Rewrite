@@ -1,4 +1,8 @@
 # This is the heart of the bot. The magic happens here.
+
+# TODO: remove repeated code from lobby assemle routines
+# TODO: make a proper system for pulling offline XML
+
 import requests
 import xml.etree.ElementTree as ET
 import logging
@@ -6,26 +10,13 @@ import re
 from datetime import datetime
 from lookup_tables import *
 from io_handler import *
+from states import volatileStateSet
+from states import firmStateSet
+
 import hashlib
 
-global appId
-
-# this dict will have lobby name as key, current race, last update and tourney finished flag
-tourneyProgressByLobby = {}
-tourneyProgressFunctionIsIdle = False
-
-urlListing = configPull("apiLobbiesURL")
-urlCount = configPull("apiPlayersURL")
-showVitaWarning = configPull("showVitaWarning")
-vitaFlag = configPull("emojiVitaFlagID")
-debugFlag = configPull("emojiDebugFlagID")
-showVitaRegion = configPull("showVitaRegion")
-
-platformLabelPSP = configPull("platformLabelPSP")
-platformLabelPPSSPP = configPull("platformLabelPPSSPP")
-platformLabelPS3 = configPull("platformLabelPS3")
-platformLabelVita = configPull("platformLabelVita")
-platformLabelRPCS3 = configPull("platformLabelRPCS3")
+volatileStates = volatileStateSet()
+firmStates = firmStateSet()
 
 def parseWeaponArray(weaponArray, mode):
     logging.debug(f"[Weapon array parser] Start parsing weapon list for {mode}")
@@ -68,17 +59,15 @@ def parseWeaponArray(weaponArray, mode):
         return f"{functionFinalOutput} enabled".removeprefix(", ")
 
 def calculateTourneyProgress(raceProgress, raceTarget, raceCount, lobbyName, includeVitaWarning):
-    global tourneyProgressByLobby
-    global tourneyProgressFunctionIsIdle
     raceProgress = int(raceProgress)
     raceTarget = int(raceTarget)
     raceCount = int(raceCount)
     vitaWarningPostfix = ""
     vitaWarningPrefix = ""
     
-    tourneyProgressFunctionIsIdle = False
+    volatileStates.tourneyProgressFunctionIsIdle = False
 
-    currentRaceNumber, raceNumberAlreadyUpdated, lastTourneyDone = tourneyProgressByLobby.setdefault(lobbyName, (1, False, False))
+    currentRaceNumber, raceNumberAlreadyUpdated, lastTourneyDone = volatileStates.tourneyProgressByLobby.setdefault(lobbyName, (1, False, False))
 
     if lastTourneyDone == True and raceProgress == 0: # reset stuff only on next tourney load becasue if we reset it immediately
         currentRaceNumber = 1                           # after the old one ends, it'll report progress as 1 until it returns to lobby
@@ -95,9 +84,9 @@ def calculateTourneyProgress(raceProgress, raceTarget, raceCount, lobbyName, inc
         raceNumberAlreadyUpdated = True
         if currentRaceNumber > raceCount:
             lastTourneyDone = True # tourney end check
-            currentRaceNumber -= 1 # this is kinda retarded but i like it :p
+            currentRaceNumber -= 1 # this is kinda stupid but i like it :p
     
-    tourneyProgressByLobby[lobbyName] = (currentRaceNumber, raceNumberAlreadyUpdated, lastTourneyDone)
+    volatileStates.tourneyProgressByLobby[lobbyName] = (currentRaceNumber, raceNumberAlreadyUpdated, lastTourneyDone)
 
     if raceProgress == 0 and currentRaceNumber == 1:
         return "", -1 # tourney prestart check
@@ -107,11 +96,10 @@ def calculateTourneyProgress(raceProgress, raceTarget, raceCount, lobbyName, inc
 def calculateGameProgress(progress, target, includeVitaWarning):
     progress = int(progress)
     target = int(target)
-    vitaWarningPostfix = ""
-    vitaWarningPrefix = ""
-    if includeVitaWarning == True:
-        vitaWarningPrefix = ", HOLD ON!"
-        vitaWarningPostfix = "\n-# ‎   Due to a bug, Vita players will be kicked if someone joins mid-race. Please wait for the race to finish."
+    
+    vitaWarningPrefix, vitaWarningPostfix = (", HOLD ON!", \
+    "\n-# ‎   Due to a bug, Vita players will be kicked if someone joins mid-race. Please wait for the race to finish.")\
+    if includeVitaWarning else ("", "")
 
     if progress <= target and progress != 0:
         return f"\n**   >> RACE IN PROGRESS{vitaWarningPrefix} <<**{vitaWarningPostfix}"
@@ -146,19 +134,12 @@ def convertTourneyTrackList(trackList, game, currentRaceNumber = -1):   # this f
     .replace("[]", "") # hacky formatting stuff :p
 
 def convertPlayerList(playerList, game):
-    global platformLabelPSP
-    global platformLabelPPSSPP
-    global platformLabelPS3
-    global platformLabelVita
-    global platformLabelRPCS3
-    global vitaFlag
-    global debugFlag
 
     if game == "pulse" and configPull("pulseShowRegions") == False: # choo wanted (PSP) regardless of bot config so this was born
         playerList = f"{playerList},"\
-        .replace(",", f" {platformLabelPSP},")\
+        .replace(",", f" {firmStates.platformLabelPSP},")\
         .rstrip(",")\
-        .replace(f"(PPSSPP) {platformLabelPSP}", f"{platformLabelPPSSPP}") # pretty smart eh?
+        .replace(f"(PPSSPP) {firmStates.platformLabelPSP}", f"{firmStates.platformLabelPPSSPP}") # pretty smart eh?
         playerListPrefix = configPull("pulsePlayerListPrefix")
         return "\n" + playerListPrefix + playerList.replace(', ', f'\n{playerListPrefix}')
 
@@ -180,19 +161,19 @@ def convertPlayerList(playerList, game):
     playerListPrintable = ""
 
     for entry in playerEntryArray:
-        entryPlatform = platformLabelPSP # the only reason why this wouldn't be changed later would be because you're on PSP
+        entryPlatform = firmStates.platformLabelPSP # the only reason why this wouldn't be changed later would be because you're on PSP
         if "+PS3" in entry.name:
-            entryPlatform = platformLabelPS3
+            entryPlatform = firmStates.platformLabelPS3
             entry.update_name(entry.name.replace("+PS3", ""))
         if "+Vita" in entry.name:
-            entryPlatform = platformLabelVita
+            entryPlatform = firmStates.platformLabelVita
             entry.update_name(entry.name.replace("+Vita", ""))
         if "(RPCS3)" in entry.name:
-            entryPlatform = platformLabelRPCS3
+            entryPlatform = firmStates.platformLabelRPCS3
             entry.update_name(entry.name.replace("+PS3", ""))
             entry.update_name(entry.name.replace(" (RPCS3)", ""))
         if "(PPSSPP)" in entry.name:
-            entryPlatform = platformLabelPPSSPP
+            entryPlatform = firmStates.platformLabelPPSSPP
             entry.update_name(entry.name.replace(" (PPSSPP)", ""))
 
         pattern = r'\((\w{2})\)'
@@ -202,10 +183,10 @@ def convertPlayerList(playerList, game):
             entryRegion = f":flag_{match.group(1)}:"
             entry.update_name(re.sub(pattern, '', entry.name).strip())
         else:
-            entryRegion = debugFlag
+            entryRegion = firmStates.debugFlag
 
-        if "Vita" in entryPlatform and showVitaRegion == False:
-            entryRegion = vitaFlag
+        if "Vita" in entryPlatform and firmStates.showVitaRegion == False:
+            entryRegion = firmStates.vitaFlag
 
         entry.add_info(entryRegion, entryPlatform)
         playerListPrintable = playerListPrintable + f"\n   {entry}"
@@ -213,9 +194,8 @@ def convertPlayerList(playerList, game):
     return playerListPrintable
 
 def fetchLobbyList():
-    global tourneyProgressFunctionIsIdle 
 
-    xmlData = requests.get(urlListing)
+    xmlData = requests.get(firmStates.urlListing)
     try:
         with open("../GetLobbyListing.xml", "r") as exampleXMLFile:
             xmlOfflineData = exampleXMLFile.read()
@@ -233,10 +213,12 @@ def fetchLobbyList():
         return "failureApiFault"
 
     xmlHash = hashlib.sha1(xmlData.content).hexdigest() # calculate hash to not do same work more than once
-    if xmlHash == workspacePull("lobbies"):
+    if xmlHash == volatileStates.hashAPILobby:
+        logging.debug("[fetchLobbyList] New XML hash is the same as stored! Aborting...")
         return "nothingToDo"
     else: 
-        workspaceStore(xmlHash, "lobbies")
+        volatileStates.hashAPILobby = xmlHash
+        logging.debug("[fetchLobbyList] New XML hash is unique! It's stored in volatileStates now.")
 
     if root.findall('Lobby') == []: # terminate task if no lobbies are in the list (arrays will crash the program otherwise)
         logging.debug("[Lobby XML Parser] XML passed is empty")
@@ -247,16 +229,16 @@ def fetchLobbyList():
     # so the next tournament race counter is off by some number and you can't fix it and it'll stay like that forever
     # which is why we watch to make sure that if the tournament function isn't invoked, the dict is nuked, so that leftover variables (if any) aren't
     # passed down
-    # this could be done per-lobby as well but that would be way more complicated than this single bool and i honestly cannot be arsed to do that
+    # this could be done per-lobby as well but that would be way more complicated than this single bool and i honestly cannot be bothered to do that
     # for the specific case of someone holding two tournaments then one of them ending prematurely then that person restarting the tournament and wondering
     # why it's broken
 
-    tourneyProgressFunctionIsIdle = True
+    volatileStates.tourneyProgressFunctionIsIdle = True
 
     for lobby in root.findall('Lobby'): # let's get xml'ing!!!! this loop will parse each lobby, put its properties into variables and compose it into a text block
-        appId = lobby.attrib["AppId"] # the appId determines what game the parsing will be done for
+        volatileStates.appId = lobby.attrib["AppId"] # the appId determines what game the parsing will be done for
             
-        match appId:
+        match volatileStates.appId:
             case "23360": # this appId is for WipEout HD
 
 
@@ -323,7 +305,7 @@ def fetchLobbyList():
                 match propertyGameMode:
                     case "Single Race":
                         weaponAddendum = parseWeaponArray(propertyWeaponList, "Single Race") if propertyWeaponsEnabled == "1" else "Weapons disabled"
-                        includeVitaWarning = True if showVitaWarning == True and "+Vita" in propertyPlayerList else False
+                        includeVitaWarning = True if firmStates.showVitaWarning == True and "+Vita" in propertyPlayerList else False
                         progressAddendum = calculateGameProgress(propertyRaceProgress, propertyLapCount, includeVitaWarning)
 
                         hdLobbyBlock = f"**   \
@@ -337,7 +319,7 @@ def fetchLobbyList():
 
                     case "Eliminator":
                         weaponAddendum = parseWeaponArray(propertyWeaponList, "Eliminator")
-                        includeVitaWarning = True if showVitaWarning == True and "+Vita" in propertyPlayerList else False
+                        includeVitaWarning = True if firmStates.showVitaWarning == True and "+Vita" in propertyPlayerList else False
                         progressAddendum = calculateGameProgress(propertyRaceProgress, propertyElimTarget, includeVitaWarning)
 
                         hdLobbyBlock = f"**   \
@@ -350,7 +332,7 @@ def fetchLobbyList():
 {progressAddendum}"
 
                     case "Zone Battle":
-                        includeVitaWarning = True if showVitaWarning == True and "+Vita" in propertyPlayerList else False
+                        includeVitaWarning = True if firmStates.showVitaWarning == True and "+Vita" in propertyPlayerList else False
                         progressAddendum = calculateGameProgress(propertyRaceProgress, propertyZBTarget, includeVitaWarning)
 
                         hdLobbyBlock = f"**   \
@@ -364,7 +346,7 @@ def fetchLobbyList():
 
                     case "Tournament":
                         weaponAddendum = parseWeaponArray(propertyWeaponList, "Single Race") if propertyWeaponsEnabled == "1" else "Weapons disabled"
-                        includeVitaWarning = True if showVitaWarning == True and "+Vita" in propertyPlayerList else False
+                        includeVitaWarning = True if firmStates.showVitaWarning == True and "+Vita" in propertyPlayerList else False
                         progressAddendum, currentRaceNumber = calculateTourneyProgress(propertyRaceProgress, propertyLapCount, \
                         propertyTourneyTrackCount, propertyGameName, includeVitaWarning)
                         trackList = convertTourneyTrackList(propertyTournamentTrackListIDs, "HD", currentRaceNumber)
@@ -455,8 +437,8 @@ def fetchLobbyList():
     # ---###--- PARSING IS DONE, COMPOSING INTO FINAL OUTPUT ---###---
 
     # ...but first, let's nuke the tourney dict, just in case (see this function's start for explanation)
-    if tourneyProgressFunctionIsIdle == True and tourneyProgressByLobby:
-        tourneyProgressByLobby.clear()
+    if volatileStates.tourneyProgressFunctionIsIdle == True and volatileStates.tourneyProgressByLobby: # if tourneyProgressByLobby exists, that is
+        volatileStates.tourneyProgressByLobby.clear()
 
     if parsingResultsPulse == "" and parsingResultsHD != "":
         return(f"\nLobby listing (HD):{parsingResultsHD}")
@@ -468,7 +450,7 @@ def fetchLobbyList():
         return(f"\nLobby listing (HD):{parsingResultsHD}\nLobby listing (Pulse):{parsingResultsPulse}")
 
 def fetchPlayerCount():
-    xmlData = requests.get(urlCount)
+    xmlData = requests.get(firmStates.urlCount)
     isSameFlag = False
 
     try:
@@ -480,10 +462,10 @@ def fetchPlayerCount():
     playerCount = root.attrib["totalEntries"]
 
     xmlHash = hashlib.sha1(xmlData.content).hexdigest()
-    if xmlHash == workspacePull("players"):
+    if xmlHash == volatileStates.hashAPIPlayers:
         isSameFlag = True
     else: 
-        workspaceStore(xmlHash, "players")
+        volatileStates.hashAPIPlayers = xmlHash
 
     return ("1 player is currently logged in.", isSameFlag) if playerCount == "1" \
     else ("!NOPLAYERS", isSameFlag) if playerCount == "0"\
