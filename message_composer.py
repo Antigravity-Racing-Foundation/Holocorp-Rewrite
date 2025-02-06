@@ -5,26 +5,25 @@ from io_handler import *
 from xml_parser import *
 import string
 from logging import *
+from states import volatileStateSet
 
-global lobbyListing
-lobbyListing = ""
+volatileStates = volatileStateSet()
 
 def composeStatus():
-    global lobbyListing
 
     fetchedLobbyList = fetchLobbyList()
     if fetchedLobbyList != "nothingToDo":
-        lobbyListing = fetchedLobbyList # this should ensure that we always have the current listing in memory and that it doesn't get
-        lobbyListingIsSame = False    # overwritten when that's not needed
+        volatileStates.lobbyListing = fetchedLobbyList  # this should ensure that we always have the current listing in memory and that it doesn't get
+        volatileStates.lobbyListingIsSame = False                      # overwritten when that's not needed
     else:
-        lobbyListingIsSame = True
+        volatileStates.lobbyListingIsSame = True
 
-    playerCount, playerCountIsSame = fetchPlayerCount()
+    playerCount, volatileStates.playerCountIsSame = fetchPlayerCount()
 
 
-    if lobbyListingIsSame == True and playerCountIsSame == True:
+    if volatileStates.lobbyListingIsSame == True and volatileStates.playerCountIsSame == True:
         return "nothingToDo"
     else:
         return messageTemplate("online").replace("!PLAYERCOUNT", playerCount)\
-        .replace("!LOBBYLISTING", lobbyListing)\
+        .replace("!LOBBYLISTING", volatileStates.lobbyListing)\
         .replace("!NOPLAYERS\n", "")
