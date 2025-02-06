@@ -52,40 +52,6 @@ def tokenPull():
     with open("./external/credentials.txt", "r") as tokenFile:
         return(tokenFile.read())
 
-def workspaceStore(data, dataType):
-    match dataType:
-        case "lobbies":
-            pattern = "hashAPILobby: "
-        case "players":
-            pattern = "hashAPIPlayers: "
-        case "status":
-            pattern = "backendStatus: "
-
-    with open("./external/holocorp.workspace", "r+") as workspaceFile:
-            workspace = workspaceFile.read()
-            workspace = re.sub(rf"{pattern}\w+", f"{pattern}{data}", workspace)
-            workspaceFile.seek(0)
-            workspaceFile.write(workspace)
-            workspaceFile.truncate()
-
-def workspacePull(dataType):
-    match dataType:
-        case "lobbies":
-            pattern = "hashAPILobby: "
-        case "players":
-            pattern = "hashAPIPlayers: "
-        case "status":
-            pattern = "backendStatus: "
-
-    try:
-        with open("./external/holocorp.workspace", "r") as workspaceFile:
-            workspace = workspaceFile.read()
-            match = re.search(rf"{pattern}(\w+)", workspace)
-            return match.group(1)
-    except:
-        logging.error("[workspacePull] Something went wrong, please investigate.")
-        exit()
-
 def messageTemplate(templateType):
     if templateType == "weeklies": templateFileName = "event_gen_template.md"
     else: templateFileName = f"status_template_{templateType}.md"
