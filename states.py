@@ -35,6 +35,7 @@ class volatileStateSet:
             "pingReplyRiggedMessage": "None",
             "currentStatusAlreadyPosted": "None",
             "statusMessageCache": "None",
+            "pingReplyCache": [],
             "trackGeneratorCache": [] # entrypoint states
         }
         self.__dict__.update(self._defaults)

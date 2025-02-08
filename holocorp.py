@@ -3,6 +3,7 @@
 # TODO: implement available lobby spots reminder
 # TODO: pull as much ui text as possible from .md templates
 # TODO: event preping feature
+# TODO: change the way status messages are loaded (put them into a variable for less points of failure) and allow custom ones
 
 import discord
 import datetime
@@ -408,6 +409,11 @@ async def on_message(message):
 
         logging.debug(f"[onMessage] Replying to {message.author}")
 
-        await message.reply(random.choice(volatileStates.pingReplies).replace("!TARGETMESSAGE", targetMessage), mention_author=True)
+        for attempts in range (16):
+            replyCandidate = random.choice(volatileStates.pingReples)
+            if replyCandidate not in volatileStates.pingReplyCache: break
+        if len(volatileStates.pingReplyCache) > 3: volatileStates.pingReplyCache = []
+
+        await message.reply(replyCandidate.replace("!TARGETMESSAGE", targetMessage), mention_author=True)
 
 client.run(tokenPull())
