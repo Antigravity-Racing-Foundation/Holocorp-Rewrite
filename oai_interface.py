@@ -31,7 +31,7 @@ def llmFetchResponse(message: str, author: str):
     newMessage = {"role": "user", "content": f"{author}: {message}"}
     llmStates.llmContext.append(newMessage)
 
-    logging.debug(f"[llmFetchResponse] New message is {newMessage[:30]}...")
+    logging.debug(f"[llmFetchResponse] New message is {message[:30]}...")
 
     modelResponse = client.chat.completions.create(
         model="gpt-4o-mini",
@@ -66,15 +66,33 @@ def llmFetchResponse(message: str, author: str):
                 messages=llmStates.llmContext,
             )
             finalResponse = modelResponseWithFunctionCall.choices[0].message.content
-            # magically remove old tool runs from context
-            llmStates.llmContext = [entry for entry in llmStates.llmContext if entry.get("role") != "tool"]
+
+            # remove old tool runs from context (jank!)
+            filteredContext = []
+            skipNext = False
+
+            for entry in llmStates.llmContext:
+                if skipNext:  
+                    skip_next = False
+                    continue  
+
+                if not isinstance(entry, dict):  
+                    skipNext = True
+                    continue  
+
+                if entry.get("role") == "tool":  
+                    continue
+
+                filteredContext.append(entry)
+
+            llmStates.llmContext = filteredContext
         else: 
             logging.warning(f"[llmFetchResponse function run] Function {tool_function_name} does not exist")
     else: 
         finalResponse = modelResponse.choices[0].message.content
 
-    if llmStates.llmContext > llmStates.llmContextPermanentEntryCount + llmMaxUserMessageCount:
-        logging.debug(f"[llmFetchResponse] Exceeded {llmMaxUserMessageCount} user messages, popping the oldest...")
+    if len(llmStates.llmContext) > llmStates.llmContextPermanentEntryCount + llmStates.llmMaxUserMessageCount:
+        logging.debug(f"[llmFetchResponse] Exceeded {llmStates.llmMaxUserMessageCount} user messages, popping the oldest...")
         llmStates.llmContext.pop(llmStates.llmContextPermanentEntryCount)
 
     return finalResponse

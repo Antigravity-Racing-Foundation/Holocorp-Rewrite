@@ -78,6 +78,6 @@ class llmStateSet:
         self._defaults = {
             "llmContext": llmInitialContext,
             "llmContextPermanentEntryCount": len(llmInitialContext),
-            "llmMaxUserMessageCount": configPull("llmMaxUserMessageCount")
+            "llmMaxUserMessageCount": int(configPull("llmMaxUserMessageCount"))
         }
         self.__dict__.update(self._defaults)
