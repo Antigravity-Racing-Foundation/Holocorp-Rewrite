@@ -29,7 +29,7 @@ class volatileStateSet:
             "lobbyListingIsSame": False,
             "lobbyListing": "None", # message_composer states
 
-            "pingRepliesEnabled": True,
+            "pingReplyType": "smart",
             "pingRepliesRigged": False,
             "pingReplies": loadReplies(),
             "pingReplyRiggedMessage": "None",
@@ -62,5 +62,22 @@ class firmStateSet:
 
             "backendStatus": configPull("defaultBackendStatus"),
             "channel": "None" # entrypoint states
+        }
+        self.__dict__.update(self._defaults)
+
+@singleton
+class llmStateSet:
+    def __init__(self):
+        self.reset()
+
+    def reset(self):
+        llmInitialContext = [{"role": "system", "content": llmResourcePull("system_message.md")}]
+        exampleMessages = llmResourcePull("example_messages.json")
+        llmInitialContext.extend(exampleMessages["messages"])
+
+        self._defaults = {
+            "llmContext": llmInitialContext,
+            "llmContextPermanentEntryCount": len(llmInitialContext),
+            "llmMaxUserMessageCount": configPull("llmMaxUserMessageCount")
         }
         self.__dict__.update(self._defaults)

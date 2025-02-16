@@ -24,14 +24,17 @@ from message_composer import *
 from io_handler import *
 from event_list_generate import generateEventList
 from event_list_generate import generateRandomTrack
+from oai_interface import llmFetchResponse
 
 from states import volatileStateSet
 from states import firmStateSet
+from states import llmStateSet
 
 from pathlib import Path
 
 volatileStates = volatileStateSet()
 firmStates = firmStateSet()
+llmStates = llmStateSet()
 
 intents = discord.Intents.default()
 intents.message_content = True
@@ -273,24 +276,30 @@ async def activity_error(interaction: discord.Interaction, error):
 
 reply_choices = [
     app_commands.Choice(name="disable", value="disable"),
-    app_commands.Choice(name="enable", value="enable"),
+    app_commands.Choice(name="dumb_replies", value="dumb"),
+    app_commands.Choice(name="llm_replies", value="smart"),
     app_commands.Choice(name="reload_reply_list", value="reload"),
     app_commands.Choice(name="set_next_reply", value="rig")
 ]
-@commandTree.command(name="reply_control", description="Toggle, reload or rig ping reply functionality", guild=None)
+@commandTree.command(name="reply_control", description="Change, reload or rig ping reply functionality", guild=None)
 @app_commands.choices(action_command=reply_choices)
 @app_commands.default_permissions(permissions=0)
 async def replies(interaction: discord.Interaction, action_command: str, rigged_message: str = ""):
 
     match action_command:
         case "disable":
-            volatileStates.pingRepliesEnabled = False
-            await interaction.response.send_message(ephemeral=True, content=f"Set ping reply status to `Disabled`")
+            volatileStates.pingReplyType = "off"
+            await interaction.response.send_message(ephemeral=True, content=f"Ping replies are disabled now!`")
             return
 
-        case "enable":
-            volatileStates.pingRepliesEnabled = True
-            await interaction.response.send_message(ephemeral=True, content=f"Set ping reply status to `Enabled`")
+        case "dumb":
+            volatileStates.pingReplyType = "dumb"
+            await interaction.response.send_message(ephemeral=True, content=f"Botty will reply with preset messages now!")
+            return
+
+        case "smart":
+            volatileStates.pingReplyType = "smart"
+            await interaction.response.send_message(ephemeral=True, content=f"Botty will use the LLM now!")
             return
 
         case "reload":
@@ -320,9 +329,10 @@ async def replies_error(interaction: discord.Interaction, error):
 
 reset_choices = [
     app_commands.Choice(name="partial", value="partial"),
+    app_commands.Choice(name="llm", value="llm"),
     app_commands.Choice(name="full", value="full")
 ]
-@commandTree.command(name="reset", description="Start from a clean slate (partial if things are stuck, full for configuration changes)", guild=None)
+@commandTree.command(name="reset", description="Start from a clean slate", guild=None)
 @app_commands.choices(reset_command=reset_choices)
 @app_commands.default_permissions(permissions=0)
 async def reset(interaction: discord.Interaction, reset_command: str):
@@ -336,6 +346,10 @@ async def reset(interaction: discord.Interaction, reset_command: str):
         case "partial":
             volatileStates.reset()
             await interaction.response.send_message(ephemeral=True, content=f"Bot's volatile states reset!")
+
+        case "llm":
+            llmStates.reset()
+            await interaction.response.send_message(ephemeral=True, content=f"LLM states reset!")
         
         case "full":
             volatileStates.reset()
@@ -391,7 +405,7 @@ async def on_message(message):
         logging.debug("[onMessage] Aborted, author is client")
         return
 
-    if client.user in message.mentions and volatileStates.pingRepliesEnabled:
+    if client.user in message.mentions and volatileStates.pingReplyType == "dumb":
 
         targetMessage = str(message.content).replace(f"<@{client.user.id}>", "").lstrip()
 
@@ -410,10 +424,16 @@ async def on_message(message):
         logging.debug(f"[onMessage] Replying to {message.author}")
 
         for attempts in range (16):
-            replyCandidate = random.choice(volatileStates.pingReples)
+            replyCandidate = random.choice(volatileStates.pingReplies)
             if replyCandidate not in volatileStates.pingReplyCache: break
         if len(volatileStates.pingReplyCache) > 3: volatileStates.pingReplyCache = []
 
         await message.reply(replyCandidate.replace("!TARGETMESSAGE", targetMessage), mention_author=True)
+    
+    elif client.user in message.mentions and volatileStates.pingReplyType == "smart":
+        async with message.channel.typing():
+            logging.debug(f"[onMessage] Passing \"{message.content}\" to the LLM...")
+            await message.reply(llmFetchResponse(str(message.content).replace(f"<@{client.user.id}>", "").lstrip(), message.author))
+            return
 
 client.run(tokenPull())

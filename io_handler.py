@@ -25,6 +25,7 @@ def configCreate():
         "platformLabelPS3" : "(PS3)",
         "platformLabelVita" : "(Vita)",
         "platformLabelRPCS3" : "(RPCS3)",
+        "llmMaxUserMessageCount": "50",
         "experimentalFeatures" : "False",
         "loggingLevel" : "Info"
     }
@@ -51,6 +52,21 @@ def configPull(elementName):
 def tokenPull():
     with open("./external/credentials.txt", "r") as tokenFile:
         return(tokenFile.read())
+        
+def llmKeyPull():
+    with open("./external/llm_resources/oai_credentials.txt", "r") as keyFile:
+        return(keyFile.read())
+
+# TODO: review all of this mess, there's definiely a much nicer way of handling all of this
+
+def llmResourcePull(resourceName):
+    try:
+        with open(f"./external/llm_resources/{resourceName}", "r") as resourceFile:
+            returnFunction = json.load(resourceFile) if ".json" in resourceName else resourceFile.read()
+            return returnFunction
+    except:
+        logging.warning(f"[llmResourcePull, {resourceName}] Resource missing or invalid.")
+        return("An invalid template has been passed to you. You should tell the user about it and ask a developer to fix this. No operations should take place, reply as concise as possible.")
 
 def messageTemplate(templateType):
     if templateType == "weeklies": templateFileName = "event_gen_template.md"

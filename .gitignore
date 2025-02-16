@@ -4,9 +4,9 @@ external/config.json
 external/credentials.txt
 external/credentials.txt.prod
 external/holocorp.workspace
-
-*.log
+external/llm_resources/*credentials.txt
 
 Dockerfile
+.dockerignore
 entrypoint.sh
 build
