@@ -196,11 +196,11 @@ def convertPlayerList(playerList, game):
 def fetchLobbyList():
 
     xmlData = requests.get(firmStates.urlListing)
-    try:
-        with open("../GetLobbyListing.xml", "r") as exampleXMLFile:
-            xmlOfflineData = exampleXMLFile.read()
-    except:
-        logging.debug("[fetchLobbyList] Couldn't open the example XML, to be expected on production")
+    # try:
+    #     with open("../GetLobbyListing.xml", "r") as exampleXMLFile:
+    #         xmlOfflineData = exampleXMLFile.read()
+    # except:
+    #     logging.debug("[fetchLobbyList] Couldn't open the example XML, to be expected on production")
     parsingResultsHD = ""
     parsingResultsPulse = ""
     raceProgress = ""
