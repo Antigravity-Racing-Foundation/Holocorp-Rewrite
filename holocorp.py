@@ -5,32 +5,32 @@
 # TODO: event preping feature
 # TODO: change the way status messages are loaded (put them into a variable for less points of failure) and allow custom ones
 
-import discord
-import datetime
-import re
-import logging
-import sys
-import os
-import random
-import asyncio
 from distutils.util import strtobool
+from pathlib import Path
+import datetime
+import discord
+import logging
+import asyncio
+import random
+import sys
+import re
+import os
+import io
 
+from discord.ext.commands import MissingPermissions
 from discord import app_commands
 from discord.ext import commands
 from discord.ext import tasks
-from discord.ext.commands import MissingPermissions
 
+from event_list_generate import generateRandomTrack
+from event_list_generate import generateEventList
+from oai_interface import llmFetchResponse
 from message_composer import *
 from io_handler import *
-from event_list_generate import generateEventList
-from event_list_generate import generateRandomTrack
-from oai_interface import llmFetchResponse
 
 from states import volatileStateSet
 from states import firmStateSet
 from states import llmStateSet
-
-from pathlib import Path
 
 volatileStates = volatileStateSet()
 firmStates = firmStateSet()
@@ -51,7 +51,6 @@ client = Client(intents=discord.Intents.default())
 commandTree = app_commands.CommandTree(client)
 
 logging.basicConfig(encoding='utf-8', level=logging.NOTSET)
-logging.getLogger().addHandler(logging.StreamHandler(sys.stdout))
 
 try:
     logging.getLogger().setLevel(logging.getLevelName(configPull("loggingLevel").upper()))
@@ -363,6 +362,38 @@ async def reset_error(interaction: discord.Interaction, error):
     if isinstance(error, discord.app_commands.errors.MissingPermissions):
         logging.info("[reset Command Error Handler] Invoke attempted by a peasant, but perms are missing lol")
         await interaction.response.send_message(ephemeral=True, content="You don't have the permission to do this")
+
+
+
+
+if configPull("experimentalFeatures"):
+    scope_choices = [
+        app_commands.Choice(name="volatile_states", value="volatileStates"),
+        app_commands.Choice(name="firm_states", value="firmStates"),
+        app_commands.Choice(name="llm_states", value="llmStates")
+    ]
+    @commandTree.command(name="peek", description="Take a look inside. Exciting!", guild=None)
+    @app_commands.choices(scope=scope_choices)
+    @app_commands.default_permissions(permissions=0)
+    async def peek(interaction: discord.Interaction, scope: str, value: str):
+        try:
+            returnValue = getattr(globals().get(scope), value)
+        except AttributeError as e:
+            logging.debug(f"[peek] Failed to fetch {value} of {scope} with {e}")
+            await interaction.response.send_message(ephemeral=True, content=f"Something went wrong! You've probably requested a bad value.\n{e}")
+            return
+        
+        if len(str(returnValue)) > 1000:
+            returnValue = discord.File(io.BytesIO(str(returnValue).replace("},", "},\n").encode()), filename="trace.txt")
+            await interaction.response.send_message(ephemeral=True, content="Output length exceeded 1000 characters...", file=returnValue)
+            return
+        await interaction.response.send_message(ephemeral=True, content=f"{scope}.{value}={returnValue}")
+
+    @activity.error
+    async def peek_error(interaction: discord.Interaction, error):
+        if isinstance(error, discord.app_commands.errors.MissingPermissions):
+            logging.info("[peek Command Error Handler] Invoke attempted by a peasant, but perms are missing lol")
+            await interaction.response.send_message(ephemeral=True, content="You don't have the permission to do this")
 
 
 
