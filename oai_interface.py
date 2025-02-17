@@ -5,7 +5,6 @@ from states import volatileStateSet
 import logging
 import json
 
-
 client = OpenAI(api_key=llmKeyPull())
 
 llmStates = llmStateSet()
@@ -67,29 +66,16 @@ def llmFetchResponse(message: str, author: str):
             )
             finalResponse = modelResponseWithFunctionCall.choices[0].message.content
 
-            # remove old tool runs from context (jank!)
-            filteredContext = []
-            skipNext = False
-
-            for entry in llmStates.llmContext:
-                if skipNext:  
-                    skip_next = False
-                    continue  
-
-                if not isinstance(entry, dict):  
-                    skipNext = True
-                    continue  
-
-                if entry.get("role") == "tool":  
-                    continue
-
-                filteredContext.append(entry)
-
-            llmStates.llmContext = filteredContext
+            # remove old tool runs from context
+            llmStates.llmContext.pop(len(llmStates.llmContext)-2)
+            llmStates.llmContext.pop(len(llmStates.llmContext)-1)
         else: 
             logging.warning(f"[llmFetchResponse function run] Function {tool_function_name} does not exist")
+
     else: 
         finalResponse = modelResponse.choices[0].message.content
+
+    llmStates.llmContext.append({"role": "assistant", "content": finalResponse})
 
     if len(llmStates.llmContext) > llmStates.llmContextPermanentEntryCount + llmStates.llmMaxUserMessageCount:
         logging.debug(f"[llmFetchResponse] Exceeded {llmStates.llmMaxUserMessageCount} user messages, popping the oldest...")
