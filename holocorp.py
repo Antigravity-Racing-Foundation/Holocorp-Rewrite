@@ -2,8 +2,7 @@
 
 # TODO: implement available lobby spots reminder
 # TODO: pull as much ui text as possible from .md templates
-# TODO: event preping feature
-# TODO: change the way status messages are loaded (put them into a variable for less points of failure) and allow custom ones
+# TODO: event pre-ping feature
 
 from distutils.util import strtobool
 from pathlib import Path
@@ -88,20 +87,19 @@ async def updateStatusMessage(desiredContent): # abstract of edit/send new messa
 
 async def statusMessageHandler(statusMessage): # decide what to post to updateStatusMessage
 
-    if (firmStates.backendStatus == "offline" or firmStates.backendStatus == "maintenance") and volatileStates.currentStatusAlreadyPosted != True:
-        await updateStatusMessage(messageTemplate(firmStates.backendStatus))
+    if (firmStates.backendStatus != "online") and volatileStates.currentStatusAlreadyPosted != True:
+        await updateStatusMessage(firmStates.statusMessageText)
         volatileStates.currentStatusAlreadyPosted = True
         if listLobbies.is_running() == True:
             listLobbies.stop()
             logging.debug("[statusMessageHandler] Stopped lobby listing")
     else:
         logging.debug("[statusMessageHandler] Invoking updateStatusMessage to post status...")
-        await updateStatusMessage(statusMessage)
+        await updateStatusMessage(firmStates.statusMessageText)
 
 
 
-# FIXME when starting with Maintenance and changing status to Online, it'll display bare template
-# until someone sets status to online after a listing cycle passes
+
 status_choices = [
     app_commands.Choice(name="online", value="online"),
     app_commands.Choice(name="offline", value="offline"),
@@ -110,25 +108,38 @@ status_choices = [
 @commandTree.command(name="status", description="Change status message to `online`, `offline` or `maintenance`", guild=None)
 @app_commands.choices(status_command=status_choices)
 @app_commands.default_permissions(permissions=0)
-async def status(interaction: discord.Interaction, status_command: str): # set backend status command
+async def status(interaction: discord.Interaction, status_command: str, reason: str = None): # set backend status command
     volatileStates.currentStatusAlreadyPosted = False # if this command is invoked, it will probably need to update the status message
 
-    await interaction.response.send_message(ephemeral=True, content=f"Setting backend status to `{status_command.capitalize()}`")
+    if status_command == firmStates.backendStatus:
+        await interaction.response.send_message(ephemeral=True, content=f"Backend status is already `{status_command.capitalize()}`. Nothing to do.")
+        return
 
-    if status_command == "online" and listLobbies.is_running() == False:
+    if status_command != "online" and reason:
+        await interaction.response.send_message(ephemeral=True, content=f"Setting backend status to `{status_command.capitalize()}` with reason `{reason}`")
+    else:
+        await interaction.response.send_message(ephemeral=True, content=f"Setting backend status to `{status_command.capitalize()}`")
+
+    if status_command == "online":
         firmStates.backendStatus = status_command
 
         volatileStates.statusMessageCache = "None"
         volatileStates.hashAPILobby = "None"
         volatileStates.hashAPIPlayers = "None"
         
-        listLobbies.start()
+        if not listLobbies.is_running(): listLobbies.start()
         
         logging.debug("[status] Cleared cache and started lobby listing routine")
     else:
         firmStates.backendStatus = status_command
         if listLobbies.is_running(): listLobbies.stop()
-        await statusMessageHandler(messageTemplate(status_command))
+
+        if reason:
+            firmStates.statusMessageText = messageTemplate(firmStates.backendStatus + "_with_reason").replace("!REASON", reason)
+        else:
+            firmStates.statusMessageText = messageTemplate(firmStates.backendStatus)
+
+        await statusMessageHandler(firmStates.statusMessageText)
         logging.debug("[status] Stopped lobby listing routine")
 
     logging.debug("[status] New backend status is now stored in firmStates")
@@ -426,13 +437,28 @@ if configPull("experimentalFeatures"):
 
 
 
+    # Problem: this doesn't hide the command from permless people :(
+    @commandTree.command(name="foo", description="foo", guild=None)
+    @app_commands.checks.has_role("Editor")
+    async def foo(interaction: discord.Interaction):
+        await interaction.response.send_message(ephemeral=True, content="Bar")
+
+    @activity.error
+    async def foo_error(interaction: discord.Interaction, error):
+        if isinstance(error, discord.app_commands.errors.MissingRole):
+            logging.info("[foo Command Error Handler] Invoke attempted by a non-editor")
+            await interaction.response.send_message(ephemeral=True, content="You don't have the permission to do this")
+
+
+
+
 @tasks.loop(seconds=int(configPull("apiPollRate")))
 async def listLobbies():
     statusMessage = composeStatus()
     if statusMessage != "nothingToDo" and firmStates.backendStatus == "online":
         logging.debug("[Holocorp Primary Loop] Got a new status message, posting...")
         try:
-            await statusMessageHandler(statusMessage)
+            await statusMessageHandler(firmStates.statusMessageText)
         except Exception as e:
             logging.warning(f"[Holocorp Primary Loop] Discord shitteth itself with {e} :(")
 
@@ -451,7 +477,8 @@ async def on_ready():
     if firmStates.backendStatus == "online" and listLobbies.is_running() == False:
         listLobbies.start()
     else:
-        await statusMessageHandler(messageTemplate("standby"))
+        firmStates.statusMessageText = messageTemplate("standby")
+        await statusMessageHandler(firmStates.statusMessageText)
 
 
 

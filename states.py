@@ -61,9 +61,11 @@ class firmStateSet:
             "platformLabelRPCS3": configPull("platformLabelRPCS3"), # parser states
 
             "backendStatus": configPull("defaultBackendStatus"),
+            "statusMessageText": None,
             "channel": "None" # entrypoint states
         }
         self.__dict__.update(self._defaults)
+        self.statusMessageText = messageTemplate(self.backendStatus)
 
 @singleton
 class llmStateSet:

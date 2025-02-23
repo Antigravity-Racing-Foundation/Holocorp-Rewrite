@@ -6,8 +6,10 @@ from xml_parser import *
 import string
 from logging import *
 from states import volatileStateSet
+from states import firmStateSet
 
 volatileStates = volatileStateSet()
+firmStates = firmStateSet()
 
 def composeStatus():
 
@@ -24,6 +26,7 @@ def composeStatus():
     if volatileStates.lobbyListingIsSame == True and volatileStates.playerCountIsSame == True:
         return "nothingToDo"
     else:
-        return messageTemplate("online").replace("!PLAYERCOUNT", playerCount)\
+        firmStates.statusMessageText = messageTemplate("online").replace("!PLAYERCOUNT", playerCount)\
         .replace("!LOBBYLISTING", volatileStates.lobbyListing)\
         .replace("!NOPLAYERS\n", "")
+        return "updated"

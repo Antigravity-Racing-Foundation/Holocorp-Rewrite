@@ -103,7 +103,7 @@ def llmFetchResponse(message: str, author: str):
             )
             finalResponse = modelResponseWithFunctionCall.choices[0].message.content
 
-            # remove old tool runs from context
+            # remove old tool runs from context - FIXME removing all tool run context immediately isn't a good idea
             llmStates.llmContext.pop(len(llmStates.llmContext)-2)
             llmStates.llmContext.pop(len(llmStates.llmContext)-1)
 
