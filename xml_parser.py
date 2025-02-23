@@ -125,9 +125,8 @@ def convertTourneyTrackList(trackList, game, currentRaceNumber = -1):   # this f
             functionFinalOutput = f"{functionFinalOutput} | {IDToName(track)}"
         trackParserCounter += 1
 
-        if trackParserCounter == 4:
+        if trackParserCounter % 4 == 0 and trackParserCounter != 0:
             functionFinalOutput = f"{functionFinalOutput}]\n-# ‎   ["
-            trackParserCounter = 0 # FIXME causes *all* first tracks in the line to be highlighted, even those that are moved over
         
     functionFinalOutput = f"{functionFinalOutput}]"
     return functionFinalOutput.replace("[ | ", "[")\
