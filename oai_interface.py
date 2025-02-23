@@ -13,17 +13,44 @@ volatileStates = volatileStateSet()
 def getPostedLobbyListing():
     return volatileStates.statusMessageCache
 
-tools = [{
-    "type": "function",
-    "function": {
-        "name": "getPostedLobbyListing",
-        "description": "Get the current list of pilots who are using Thallium+Beat.",
-        "parameters": {
-            "type": "object",
-            "properties": {}
+def databankLookup(topic):
+    match topic:
+        case "AGRF":
+            return "The AGRF is a group ran by the FX350 pilot community. Its coowners are ThatOneBonk (aka Yuri) and ChaCheeChoo (aka Exla)."
+        case "FX350":
+            return "FX350 is the official Antigravity Racing League backed by the Belmondo Foundation. 12 teams participate."
+
+tools = [
+    {
+        "type": "function",
+        "function": {
+            "name": "getPostedLobbyListing",
+            "description": "Get the current list of pilots who are using Thallium+Beat.",
+            "parameters": {
+                "type": "object",
+                "properties": {}
+            },
         }
-    }
-}]
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "databankLookup",
+            "description": "Look up information stored in the databank for lore-related questions.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "topic": {
+                        "type": "string",
+                        "enum": ["AGRF", "FX350"],
+                        "description": "Specify which topic to look up information on. Pick the most relevant topic to the conversation.",
+                    }
+                },
+                "required": ["topic"],
+            },
+        }
+    },
+]
 
 def llmFetchResponse(message: str, author: str):
     
@@ -50,9 +77,19 @@ def llmFetchResponse(message: str, author: str):
         tool_call_id = tool_calls[0].id
         tool_function_name = tool_calls[0].function.name
 
-        if tool_function_name == 'getPostedLobbyListing':
-            results = getPostedLobbyListing()
+        skipToolRun = False
 
+        match tool_function_name:
+            case "getPostedLobbyListing":
+                results = getPostedLobbyListing()
+            case "databankLookup":
+                tool_query_string = json.loads(tool_calls[0].function.arguments)['topic']
+                results = databankLookup(tool_query_string)
+            case _:
+                logging.warning(f"[llmFetchResponse function run] Function {tool_function_name} does not exist")
+                skipToolRun = True
+
+        if not skipToolRun:
             llmStates.llmContext.append({
                 "role":"tool", 
                 "tool_call_id":tool_call_id, 
@@ -69,8 +106,6 @@ def llmFetchResponse(message: str, author: str):
             # remove old tool runs from context
             llmStates.llmContext.pop(len(llmStates.llmContext)-2)
             llmStates.llmContext.pop(len(llmStates.llmContext)-1)
-        else: 
-            logging.warning(f"[llmFetchResponse function run] Function {tool_function_name} does not exist")
 
     else: 
         finalResponse = modelResponse.choices[0].message.content
