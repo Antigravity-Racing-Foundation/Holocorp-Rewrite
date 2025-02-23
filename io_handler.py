@@ -11,6 +11,7 @@ def configCreate():
         "statusMessageChannelID" : "0",
         "zgrRolePing" : "0",
         "defaultBackendStatus" : "online",
+        "defaultPingReplyMode": "dumb",
         "showVitaRegion" : "False",
         "emojiVitaFlagID" : "0",
         "emojiDebugFlagID" : "0",

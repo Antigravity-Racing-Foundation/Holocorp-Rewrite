@@ -29,7 +29,7 @@ class volatileStateSet:
             "lobbyListingIsSame": False,
             "lobbyListing": "None", # message_composer states
 
-            "pingReplyType": "smart",
+            "pingReplyType": configPull("defaultPingReplyMode"),
             "pingRepliesRigged": False,
             "pingReplies": loadReplies(),
             "pingReplyRiggedMessage": "None",

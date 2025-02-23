@@ -365,7 +365,6 @@ async def reset(interaction: discord.Interaction, reset_command: str):
         case "full":
             volatileStates.reset()
             firmStates.reset()
-            status(volatileStates.backendStatus)
             firmStates.channel = client.get_channel(int(configPull("statusMessageChannelID")))
             await interaction.response.send_message(ephemeral=True, content=f"Wiped everything! Fresh stuff has been pulled from config and logic has been reset.")
         
