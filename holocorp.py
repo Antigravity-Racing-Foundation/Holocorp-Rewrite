@@ -100,7 +100,8 @@ async def statusMessageHandler(statusMessage): # decide what to post to updateSt
 
 
 
-
+# FIXME when starting with Maintenance and changing status to Online, it'll display bare template
+# until someone sets status to online after a listing cycle passes
 status_choices = [
     app_commands.Choice(name="online", value="online"),
     app_commands.Choice(name="offline", value="offline"),
@@ -375,11 +376,11 @@ if configPull("experimentalFeatures"):
     @commandTree.command(name="peek", description="Take a look inside. Exciting!", guild=None)
     @app_commands.choices(scope=scope_choices)
     @app_commands.default_permissions(permissions=0)
-    async def peek(interaction: discord.Interaction, scope: str, value: str):
+    async def peek(interaction: discord.Interaction, scope: str, name: str):
         try:
-            returnValue = getattr(globals().get(scope), value)
+            returnValue = getattr(globals().get(scope), name)
         except AttributeError as e:
-            logging.debug(f"[peek] Failed to fetch {value} of {scope} with {e}")
+            logging.debug(f"[peek] Failed to fetch {name} of {scope} with {e}")
             await interaction.response.send_message(ephemeral=True, content=f"Something went wrong! You've probably requested a bad value.\n{e}")
             return
         
@@ -387,12 +388,39 @@ if configPull("experimentalFeatures"):
             returnValue = discord.File(io.BytesIO(str(returnValue).replace("},", "},\n").encode()), filename="trace.txt")
             await interaction.response.send_message(ephemeral=True, content="Output length exceeded 1000 characters...", file=returnValue)
             return
-        await interaction.response.send_message(ephemeral=True, content=f"{scope}.{value}={returnValue}")
+        await interaction.response.send_message(ephemeral=True, content=f"`{scope}.{name}` = `{returnValue}`")
 
     @activity.error
     async def peek_error(interaction: discord.Interaction, error):
         if isinstance(error, discord.app_commands.errors.MissingPermissions):
             logging.info("[peek Command Error Handler] Invoke attempted by a peasant, but perms are missing lol")
+            await interaction.response.send_message(ephemeral=True, content="You don't have the permission to do this")
+
+
+
+    # TODO generate scope choices by looking up class instances
+    @commandTree.command(name="poke", description="Break stuff! Good time for a reminder that /reset is a thing.", guild=None)
+    @app_commands.choices(scope=scope_choices)
+    @app_commands.default_permissions(permissions=0)
+    async def poke(interaction: discord.Interaction, scope: str, name: str, value: str):
+        try:
+            value = int(value)
+        except ValueError:
+            try:
+                value = bool(strtobool(value))
+            except ValueError:
+                pass
+        
+        if type(value) != type(getattr(globals().get(scope), name)):
+            await interaction.response.send_message(ephemeral=True, content=f"Type of new {value} value doesn't match the type of `{scope}.{name}`\'s value, get a grip man")
+
+        setattr(globals().get(scope), name, value)
+        await interaction.response.send_message(ephemeral=True, content=f"Done! `{scope}.{name}` = `{str(value)}`")
+
+    @activity.error
+    async def poke_error(interaction: discord.Interaction, error):
+        if isinstance(error, discord.app_commands.errors.MissingPermissions):
+            logging.info("[poke Command Error Handler] Invoke attempted by a peasant, but perms are missing lol")
             await interaction.response.send_message(ephemeral=True, content="You don't have the permission to do this")
 
 

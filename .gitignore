@@ -10,3 +10,4 @@ Dockerfile
 .dockerignore
 entrypoint.sh
 build
+*.bak
