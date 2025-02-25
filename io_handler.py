@@ -14,33 +14,36 @@ class ioScopes(Enum):
     llm = "./external/llm_resources/"
     secret = "./external/secrets/"
 
+class configInitial():
+    def __init__(self):
+        self.guildID = 0
+        self.statusMessageChannelID = 0
+        self.zgrRolePing = "None"
+        self.defaultBackendStatus = "online"
+        self.defaultPingReplyMode = "dumb"
+        self.showVitaRegion = False
+        self.emojiVitaFlagID = "None"
+        self.emojiDebugFlagID = "None"
+        self.showVitaWarning = True
+        self.apiPollRate = 30
+        self.apiLobbiesURL = "http://svo.agracingfoundation.org/medius_db/api/GetLobbyListing"
+        self.apiPlayersURL = "http://svo.agracingfoundation.org/medius_db/api/GetPlayerCount"
+        self.pulsePlayerListPrefix = "   -> "
+        self.pulseShowRegions = False
+        self.platformLabelPSP = "(PSP)"
+        self.platformLabelPPSSPP = "(PPSSPP)"
+        self.platformLabelPS3 = "(PS3)"
+        self.platformLabelVita = "(Vita)"
+        self.platformLabelRPCS3 = "(RPCS3)"
+        self.llmMaxUserMessageCount = 50
+        self.experimentalFeatures = False
+        self.loggingLevel = "Info"
+
+configInitialInstance = configInitial()
+
 def configCreate():
-    configInitial = { 
-        "guildID" : "0",
-        "statusMessageChannelID" : "0",
-        "zgrRolePing" : "0",
-        "defaultBackendStatus" : "online",
-        "defaultPingReplyMode": "dumb",
-        "showVitaRegion" : "False",
-        "emojiVitaFlagID" : "0",
-        "emojiDebugFlagID" : "0",
-        "showVitaWarning" : "True",
-        "apiPollRate" : "30",
-        "apiLobbiesURL" : "http://svo.agracingfoundation.org/medius_db/api/GetLobbyListing",
-        "apiPlayersURL" : "http://svo.agracingfoundation.org/medius_db/api/GetPlayerCount",
-        "pulsePlayerListPrefix" : "-> ",
-        "pulseShowRegions" : "False",
-        "platformLabelPSP" : "(PSP)",
-        "platformLabelPPSSPP" : "(PPSSPP)",
-        "platformLabelPS3" : "(PS3)",
-        "platformLabelVita" : "(Vita)",
-        "platformLabelRPCS3" : "(RPCS3)",
-        "llmMaxUserMessageCount": "50",
-        "experimentalFeatures" : "False",
-        "loggingLevel" : "Info"
-    }
     with open(ioScopes.config.value, "w", encoding="utf-8") as file:
-        json.dump(configInitial, file, ensure_ascii=False, indent=4)
+        json.dump(configInitialInstance.__dict__, file, ensure_ascii=False, indent=4)
     logging.critical("[configCreate] New config file created! Please populate it and restart.")
     exit()
 
@@ -54,6 +57,8 @@ def ioRead(scope: ioScopes, target: str = None):
         - ioScopes.config: 
             Reads ioScopes.config.value as a JSON file and returns the requested key value (`target`) in its most appropriate format (str | int | bool).
             - `target` value is required and must be an existing key within the ioScopes.config.value JSON.
+            - If `target` value isn't a valid key within ioScopes.config.value JSON, the function will attempt to load the key's default value.
+            - If `target` value isn't in the initial configuration dictionary, the function will raise an excepton.
 
         - ioScopes.replies: 
             Reads ioScopes.replies.value as a string, splits the contents (separator is `|||`) and returns the resulting dict. 
@@ -82,19 +87,21 @@ def ioRead(scope: ioScopes, target: str = None):
             try:
                 with open(scope.value, "r") as file:
                     fileAsObject = json.load(file)
-                configElement = fileAsObject[target]
-                try:
-                    return int(configElement)
-                except ValueError:
-                    try:
-                        return bool(strtobool(configElement))
-                    except ValueError:
-                        return configElement
+                return fileAsObject[target]
 
             except FileNotFoundError:
                 logging.warning("[ioRead] Config file not found, making one now...")
                 configCreate()
                 return
+
+            except KeyError:
+                try:
+                    returnValue = getattr(configInitialInstance, target)
+                    logging.warning(f"[ioRead] Value `{target}` not in file! Loaded the default value.")
+                    return returnValue
+                except AttributeError as e:
+                    logging.error(f"[ioRead] Value `{target}` not in file or initial config!")
+                    raise e
 
             except Exception as e:
                 logging.error("[configPull] No such variable in config or unable to parse JSON")
