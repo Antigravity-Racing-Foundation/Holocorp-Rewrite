@@ -4,6 +4,8 @@
 # TODO: pull as much ui text as possible from .md templates
 # TODO: event pre-ping feature
 
+# TODO: docstrings
+
 from distutils.util import strtobool
 from pathlib import Path
 import datetime
@@ -111,7 +113,7 @@ status_choices = [
 async def status(interaction: discord.Interaction, status_command: str, reason: str = None): # set backend status command
     volatileStates.currentStatusAlreadyPosted = False # if this command is invoked, it will probably need to update the status message
 
-    if status_command == firmStates.backendStatus:
+    if status_command == firmStates.backendStatus and status_command == "online":
         await interaction.response.send_message(ephemeral=True, content=f"Backend status is already `{status_command.capitalize()}`. Nothing to do.")
         return
 
