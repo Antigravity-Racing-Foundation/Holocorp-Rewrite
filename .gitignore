@@ -1,10 +1,7 @@
 __pycache__/
 
 external/config.json
-external/credentials.txt
-external/credentials.txt.prod
-external/holocorp.workspace
-external/llm_resources/*credentials.txt
+external/secrets
 
 Dockerfile
 .dockerignore

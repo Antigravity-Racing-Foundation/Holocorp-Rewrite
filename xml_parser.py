@@ -3,17 +3,20 @@
 # TODO: remove repeated code from lobby assemle routines
 # TODO: make a proper system for pulling offline XML
 
-import requests
-import xml.etree.ElementTree as ET
-import logging
-import re
-from datetime import datetime
-from lookup_tables import *
-from io_handler import *
 from states import volatileStateSet
 from states import firmStateSet
 
+from io_handler import ioScopes
+from io_handler import ioRead
+
+from lookup_tables import *
+
+import xml.etree.ElementTree as ET
+from datetime import datetime
+import requests
 import hashlib
+import logging
+import re
 
 volatileStates = volatileStateSet()
 firmStates = firmStateSet()
@@ -134,12 +137,12 @@ def convertTourneyTrackList(trackList, game, currentRaceNumber = -1):   # this f
 
 def convertPlayerList(playerList, game):
 
-    if game == "pulse" and configPull("pulseShowRegions") == False: # choo wanted (PSP) regardless of bot config so this was born
+    if game == "pulse" and ioRead(ioScopes.config, "pulseShowRegions") == False: # choo wanted (PSP) regardless of bot config so this was born
         playerList = f"{playerList},"\
         .replace(",", f" {firmStates.platformLabelPSP},")\
         .rstrip(",")\
         .replace(f"(PPSSPP) {firmStates.platformLabelPSP}", f"{firmStates.platformLabelPPSSPP}") # pretty smart eh?
-        playerListPrefix = configPull("pulsePlayerListPrefix")
+        playerListPrefix = ioRead(ioScopes.config, "pulsePlayerListPrefix")
         return "\n" + playerListPrefix + playerList.replace(', ', f'\n{playerListPrefix}')
 
     class playerEntry: # this implementation of player list digestion was ported over from Legacy becuase it's p much perfect

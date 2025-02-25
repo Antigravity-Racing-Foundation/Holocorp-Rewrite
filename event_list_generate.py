@@ -1,8 +1,10 @@
 # This file generates the weekly event list for ZGR Weekly Time Trial.
-import sys
-import random
+from io_handler import ioScopes
+from io_handler import ioRead
+
 import datetime 
-from io_handler import *
+import random
+import sys
 
 def generateRandomTrack(trackList):
     random.seed()
@@ -91,9 +93,8 @@ def generateEventList():
     currentDateTime = datetime.date.today()
     year, week_num, day_of_week = currentDateTime.isocalendar()
 
-    pingId = configPull("zgrRolePing")
-
-    template = messageTemplate("weeklies")
+    pingId = ioRead(ioScopes.config, "zgrRolePing")
+    template = ioRead(ioScopes.md, "event_gen_template.md")
 
     return template.replace("!PING", pingId)\
     .replace("!YEAR", str(year))\

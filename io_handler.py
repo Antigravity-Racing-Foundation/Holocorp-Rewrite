@@ -4,6 +4,15 @@ import os.path
 import logging
 import re
 from distutils.util import strtobool
+from enum import Enum
+
+class ioScopes(Enum):
+    replies = "./external/message_templates/ping_reply_list.md"
+    config = "./external/config.json"
+
+    md = "./external/message_templates/"
+    llm = "./external/llm_resources/"
+    secret = "./external/secrets/"
 
 def configCreate():
     configInitial = { 
@@ -30,61 +39,89 @@ def configCreate():
         "experimentalFeatures" : "False",
         "loggingLevel" : "Info"
     }
-    with open("./external/config.json", "w", encoding="utf-8") as configJsonFile:
-        json.dump(configInitial, configJsonFile, ensure_ascii=False, indent=4)
-    print("Fill in config now.")
+    with open(ioScopes.config.value, "w", encoding="utf-8") as file:
+        json.dump(configInitial, file, ensure_ascii=False, indent=4)
+    logging.critical("[configCreate] New config file created! Please populate it and restart.")
     exit()
 
-def configPull(elementName):
-    try:
-        with open("./external/config.json", "r") as configJsonFile:
-            configFile = json.load(configJsonFile)
-            configElement = configFile[elementName]
+
+
+def ioRead(scope: ioScopes, target: str = None):
+    """ 
+    Fetch data from an external file specified by the `scope`.
+
+    This function behaves differently based on the `scope` passed:
+        - ioScopes.config: 
+            Reads ioScopes.config.value as a JSON file and returns the requested key value (`target`) in its most appropriate format (str | int | bool).
+            - `target` value is required and must be an existing key within the ioScopes.config.value JSON.
+
+        - ioScopes.replies: 
+            Reads ioScopes.replies.value as a string, splits the contents (separator is `|||`) and returns the resulting dict. 
+            - `target` argument is ignored.
+
+        - ioScopes.md, ioScopes.llm, ioScopes.secret: 
+            Reads `target` file at `ioScopes.*.value`:
+            - Returns file contents as a JSON object (if file format is JSON);
+            - Returns file contents as a string (if file format is anything besides JSON).
+            - `target` argument is required and must be the full file name.
+
+    Args:
+        scope (ioScopes): Specifies the external file path or directory.
+        target (str): Specifies the value or the file which data should be pulled from.
+
+    Returns:
+        str | int | bool | dict: as described above.
+    """
+
+    if target is None and scope.name != "replies":
+        logging.error("[ioRead] No `target` passed.")
+        raise TypeError(f"[ioRead] The 'target' argument is required for the '{scope.name}' scope.")
+
+    match scope.name:
+        case "config":
             try:
-                return bool(strtobool(configElement))
-            except ValueError:
-                return configElement
-    except FileNotFoundError:
-        configCreate()
-    except:
-        logging.error("[configPull] No such variable in config or unable to parse JSON")
-        return "null"
+                with open(scope.value, "r") as file:
+                    fileAsObject = json.load(file)
+                configElement = fileAsObject[target]
+                try:
+                    return int(configElement)
+                except ValueError:
+                    try:
+                        return bool(strtobool(configElement))
+                    except ValueError:
+                        return configElement
 
-def tokenPull():
-    with open("./external/credentials.txt", "r") as tokenFile:
-        return(tokenFile.read())
+            except FileNotFoundError:
+                logging.warning("[ioRead] Config file not found, making one now...")
+                configCreate()
+                return
+
+            except Exception as e:
+                logging.error("[configPull] No such variable in config or unable to parse JSON")
+                raise e
+
+
+        case "replies":
+            try:
+                with open(scope.value, "r") as file:
+                    replyList = file.read()
+
+                replyList = replyList.split("|||")
+                return [reply.strip() for reply in replyList]
+
+            except Exception as e:
+                logging.warning(f"[loadReplies] Something went wrong, please investigate.")
+                raise e
+
+
+        case "md" | "llm" | "secret":
+            try:
+                with open(f"{scope.value}{target}", "r") as file:
+                    return json.load(file) if ".json" in target else file.read()
+            except FileNotFoundError as e:
+                logging.warning(f"[ioRead, {scope.name}] File {scope.value}{target} not found!")
+                raise e
+
         
-def llmKeyPull():
-    with open("./external/llm_resources/oai_credentials.txt", "r") as keyFile:
-        return(keyFile.read())
-
-# TODO: review all of this mess, there's definiely a much nicer way of handling all of this
-
-def llmResourcePull(resourceName):
-    try:
-        with open(f"./external/llm_resources/{resourceName}", "r") as resourceFile:
-            returnFunction = json.load(resourceFile) if ".json" in resourceName else resourceFile.read()
-            return returnFunction
-    except:
-        logging.warning(f"[llmResourcePull, {resourceName}] Resource missing or invalid.")
-        return("An invalid template has been passed to you. You should tell the user about it and ask a developer to fix this. No operations should take place, reply as concise as possible.")
-
-def messageTemplate(templateType):
-    if templateType == "weeklies": templateFileName = "event_gen_template.md"
-    else: templateFileName = f"status_template_{templateType}.md"
-            
-    try:
-        with open(f"./external/message_templates/{templateFileName}", "r") as templateFile:
-            return templateFile.read()
-    except:
-        logging.warning(f"[messageTemplate, {templateType}] Template missing or invalid.")
-        return("Missing template")
-
-def loadReplies():
-    try:
-        with open(f"./external/message_templates/ping_reply_list.md", "r") as replyListFile:
-            replyList = replyListFile.read()
-        replyList = replyList.split("|||")
-        return [reply.strip() for reply in replyList]
-    except:
-        logging.warning(f"[loadReplies] Something went wrong, please investigate.")
+        case _:
+            logging.warning(f"[ioRead] Unknown scope: {scope}")

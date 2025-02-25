@@ -6,6 +6,25 @@
 
 # TODO: docstrings
 
+from event_list_generate import generateRandomTrack
+from event_list_generate import generateEventList
+
+from discord.ext.commands import MissingPermissions
+from discord import app_commands
+from discord.ext import commands
+from discord.ext import tasks
+
+from oai_interface import llmFetchResponse
+
+from message_composer import composeStatus
+
+from states import volatileStateSet
+from states import firmStateSet
+from states import llmStateSet
+
+from io_handler import ioScopes
+from io_handler import ioRead
+
 from distutils.util import strtobool
 from pathlib import Path
 import datetime
@@ -17,21 +36,6 @@ import sys
 import re
 import os
 import io
-
-from discord.ext.commands import MissingPermissions
-from discord import app_commands
-from discord.ext import commands
-from discord.ext import tasks
-
-from event_list_generate import generateRandomTrack
-from event_list_generate import generateEventList
-from oai_interface import llmFetchResponse
-from message_composer import *
-from io_handler import *
-
-from states import volatileStateSet
-from states import firmStateSet
-from states import llmStateSet
 
 volatileStates = volatileStateSet()
 firmStates = firmStateSet()
@@ -54,7 +58,7 @@ commandTree = app_commands.CommandTree(client)
 logging.basicConfig(encoding='utf-8', level=logging.NOTSET)
 
 try:
-    logging.getLogger().setLevel(logging.getLevelName(configPull("loggingLevel").upper()))
+    logging.getLogger().setLevel(logging.getLevelName(ioRead(ioScopes.config, "loggingLevel").upper()))
 except Exception as e:
     logging.getLogger().setLevel(logging.INFO)
     logging.error(f"Logging setup failed with {e}; defaulting to INFO")
@@ -137,9 +141,9 @@ async def status(interaction: discord.Interaction, status_command: str, reason: 
         if listLobbies.is_running(): listLobbies.stop()
 
         if reason:
-            firmStates.statusMessageText = messageTemplate(firmStates.backendStatus + "_with_reason").replace("!REASON", reason)
+            firmStates.statusMessageText = ioRead(ioScopes.md, f"status_{firmStates.backendStatus}_with_reason.md").replace("!REASON", reason)
         else:
-            firmStates.statusMessageText = messageTemplate(firmStates.backendStatus)
+            firmStates.statusMessageText = ioRead(ioScopes.md, f"status_{firmStates.backendStatus}.md")
 
         await statusMessageHandler(firmStates.statusMessageText)
         logging.debug("[status] Stopped lobby listing routine")
@@ -367,7 +371,7 @@ async def reset(interaction: discord.Interaction, reset_command: str):
         case "full":
             volatileStates.reset()
             firmStates.reset()
-            firmStates.channel = client.get_channel(int(configPull("statusMessageChannelID")))
+            firmStates.channel = client.get_channel(int(ioRead(ioScopes.config, "statusMessageChannelID")))
             await interaction.response.send_message(ephemeral=True, content=f"Wiped everything! Fresh stuff has been pulled from config and logic has been reset.")
         
 @activity.error
@@ -379,7 +383,7 @@ async def reset_error(interaction: discord.Interaction, error):
 
 
 
-if configPull("experimentalFeatures"):
+if ioRead(ioScopes.config, "experimentalFeatures"):
     scope_choices = [
         app_commands.Choice(name="volatile_states", value="volatileStates"),
         app_commands.Choice(name="firm_states", value="firmStates"),
@@ -453,7 +457,7 @@ if configPull("experimentalFeatures"):
 
 
 
-@tasks.loop(seconds=int(configPull("apiPollRate")))
+@tasks.loop(seconds=int(ioRead(ioScopes.config, "apiPollRate")))
 async def listLobbies():
     statusMessage = composeStatus()
     if statusMessage != "nothingToDo" and firmStates.backendStatus == "online":
@@ -468,9 +472,9 @@ async def listLobbies():
 
 @client.event
 async def on_ready():
-    firmStates.channel = client.get_channel(int(configPull("statusMessageChannelID")))
+    firmStates.channel = client.get_channel(int(ioRead(ioScopes.config, "statusMessageChannelID")))
 
-    await commandTree.sync(guild=discord.Object(id=int(configPull("guildID"))))
+    await commandTree.sync(guild=discord.Object(id=int(ioRead(ioScopes.config, "guildID"))))
     logging.info('Login successful (in as {0.user})'.format(client))
     volatileStates.hashAPILobby = "None"
     volatileStates.hashAPIPlayers = "None"
@@ -478,7 +482,7 @@ async def on_ready():
     if firmStates.backendStatus == "online" and listLobbies.is_running() == False:
         listLobbies.start()
     else:
-        firmStates.statusMessageText = messageTemplate("standby")
+        firmStates.statusMessageText = ioRead(ioScopes.md, "status_standby.md")
         await statusMessageHandler(firmStates.statusMessageText)
 
 
@@ -523,4 +527,4 @@ async def on_message(message):
             await message.reply(llmFetchResponse(str(message.content).replace(f"<@{client.user.id}>", "").lstrip(), message.author))
             return
 
-client.run(tokenPull())
+client.run(ioRead(ioScopes.secret, "credentials.txt"))

@@ -1,11 +1,14 @@
-from openai import OpenAI
-from io_handler import llmKeyPull
-from states import llmStateSet
 from states import volatileStateSet
+from states import llmStateSet
+
+from io_handler import ioScopes
+from io_handler import ioRead
+
+from openai import OpenAI
 import logging
 import json
 
-client = OpenAI(api_key=llmKeyPull())
+client = OpenAI(api_key=ioRead(ioScopes.secret, "oai_credentials.txt"))
 
 llmStates = llmStateSet()
 volatileStates = volatileStateSet()

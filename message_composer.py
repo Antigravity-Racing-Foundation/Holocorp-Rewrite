@@ -1,12 +1,15 @@
-# This function takes the XML parser output and combines them into a single string that can be put straight on the status message
-# or ignored entirely. It may seem unnecessary to offload this to a dedicated file, but the nigthmares of Holocorp Classic
-# haunted into making this a dedicated file.
-from io_handler import *
-from xml_parser import *
-import string
-from logging import *
+# This function takes the XML parser outputs and combines them into a single string that can be used in the status message.
+from xml_parser import fetchPlayerCount
+from xml_parser import fetchLobbyList
+
 from states import volatileStateSet
 from states import firmStateSet
+
+from io_handler import ioScopes
+from io_handler import ioRead
+
+from logging import *
+import string
 
 volatileStates = volatileStateSet()
 firmStates = firmStateSet()
@@ -16,7 +19,7 @@ def composeStatus():
     fetchedLobbyList = fetchLobbyList()
     if fetchedLobbyList != "nothingToDo":
         volatileStates.lobbyListing = fetchedLobbyList  # this should ensure that we always have the current listing in memory and that it doesn't get
-        volatileStates.lobbyListingIsSame = False                      # overwritten when that's not needed
+        volatileStates.lobbyListingIsSame = False       # overwritten when that's not needed
     else:
         volatileStates.lobbyListingIsSame = True
 
@@ -26,7 +29,8 @@ def composeStatus():
     if volatileStates.lobbyListingIsSame == True and volatileStates.playerCountIsSame == True:
         return "nothingToDo"
     else:
-        firmStates.statusMessageText = messageTemplate("online").replace("!PLAYERCOUNT", playerCount)\
+        firmStates.statusMessageText = ioRead(ioScopes.md, "status_online.md")\
+        .replace("!PLAYERCOUNT", playerCount)\
         .replace("!LOBBYLISTING", volatileStates.lobbyListing)\
         .replace("!NOPLAYERS\n", "")
         return "updated"
