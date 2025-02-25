@@ -141,7 +141,7 @@ async def status(interaction: discord.Interaction, status_command: str, reason: 
         if listLobbies.is_running(): listLobbies.stop()
 
         if reason:
-            firmStates.statusMessageText = ioRead(ioScopes.md, f"status_{firmStates.backendStatus}_with_reason.md").replace("!REASON", reason)
+            firmStates.statusMessageText = ioRead(ioScopes.md, f"status_{firmStates.backendStatus}_with_reason.md").replace("!REASON", reason.capitalize())
         else:
             firmStates.statusMessageText = ioRead(ioScopes.md, f"status_{firmStates.backendStatus}.md")
 
