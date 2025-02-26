@@ -6,6 +6,9 @@ import re
 from distutils.util import strtobool
 from enum import Enum
 
+# TODO: check if everything exists on startup and complain politely if not instead of dying
+# FIXME: check if OpenAI API key is present and disable LLM replies politely if not
+
 class ioScopes(Enum):
     replies = "./external/message_templates/ping_reply_list.md"
     config = "./external/config.json"

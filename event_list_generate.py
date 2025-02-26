@@ -6,6 +6,8 @@ import datetime
 import random
 import sys
 
+# TODO: make it so that each time a keyword is replaced, a new value is generated and remove redundant keywords 
+
 def generateRandomTrack(trackList):
     random.seed()
     trackBank = ["Vineta K", "Anulpha Pass", "Moa Therma", "Chenghou Project", 
