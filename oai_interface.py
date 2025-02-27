@@ -8,7 +8,9 @@ from openai import OpenAI
 import logging
 import json
 
-client = OpenAI(api_key=ioRead(ioScopes.secret, "oai_credentials.txt"))
+apiKey = ioRead(ioScopes.secret, "oai_credentials.txt")
+if apiKey:
+    oai_client = OpenAI(api_key=apiKey)
 
 llmStates = llmStateSet()
 volatileStates = volatileStateSet()
@@ -57,12 +59,15 @@ tools = [
 
 def llmFetchResponse(message: str, author: str):
     
+    if not "oai_client" in globals():
+        return "Sorry, LLM replies aren't available at this time. Please contact staff."
+
     newMessage = {"role": "user", "content": f"{author}: {message}"}
     llmStates.llmContext.append(newMessage)
 
     logging.debug(f"[llmFetchResponse] New message is {message[:30]}...")
 
-    modelResponse = client.chat.completions.create(
+    modelResponse = oai_client.chat.completions.create(
         model="gpt-4o-mini",
         messages=llmStates.llmContext,
         tools=tools,
@@ -100,7 +105,7 @@ def llmFetchResponse(message: str, author: str):
                 "content":results
             })
 
-            modelResponseWithFunctionCall = client.chat.completions.create(
+            modelResponseWithFunctionCall = oai_client.chat.completions.create(
                 model="gpt-4o-mini",
                 messages=llmStates.llmContext,
             )

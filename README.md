@@ -61,7 +61,7 @@ external
             * Keywords not specified here or encountered after exceeding the maximum use count will be left intact.
 - `secrets` contains various API keys and client tokens. Files must contain just the secret with no newlines. Specific file names are requested by the program at runtime. In the current implementation, the program requests:
     * `credentials.txt`, which contains the Discord client token (must be present);
-    * `oai_credentials.txt`, which contains the OpenAI API key (must be present, even if OpenAI API won't be used. If you don't have an OpenAI API key, create the file but leave it empty.)
+    * `oai_credentials.txt`, which contains the OpenAI API key (if not present, LLM features will be disabled.)
 ## How to run
 1. `$ git clone https://github.com/Antigravity-Racing-Foundation/Holocorp-Rewrite.git`;
 2. Provide the required `secrets` (see Configuration -> `secrets`);

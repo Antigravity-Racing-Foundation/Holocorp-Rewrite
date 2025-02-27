@@ -1,10 +1,9 @@
 # Guess from the file name what this is.
-import json
-import os.path
-import logging
-import re
 from distutils.util import strtobool
+from pathlib import Path
 from enum import Enum
+import logging
+import json
 
 # TODO: check if everything exists on startup and complain politely if not instead of dying
 # FIXME: check if OpenAI API key is present and disable LLM replies politely if not
@@ -50,7 +49,14 @@ def configCreate():
     logging.critical("[configCreate] New config file created! Please populate it and restart.")
     exit()
 
-
+# confirm that each ioScopes entry is either a directory or a file
+for entry in ioScopes:
+    if not Path(entry.value).is_dir() and not Path(entry.value).is_file():
+        logging.warning(f"[io_handler Setup] `{entry.value}` (`{entry.name}`) doesn't exist!")
+        if entry.name == "config": 
+            configCreate()
+        else:
+            raise SystemExit(f"[io_handler] Please create `{entry.value}` and restart.")
 
 def ioRead(scope: ioScopes, target: str = None):
     """ 
@@ -61,7 +67,7 @@ def ioRead(scope: ioScopes, target: str = None):
             Reads ioScopes.config.value as a JSON file and returns the requested key value (`target`) in its most appropriate format (str | int | bool).
             - `target` value is required and must be an existing key within the ioScopes.config.value JSON.
             - If `target` value isn't a valid key within ioScopes.config.value JSON, the function will attempt to load the key's default value.
-            - If `target` value isn't in the initial configuration dictionary, the function will raise an excepton.
+            - If `target` value isn't in the initial configuration dictionary, the function will raise an exception.
 
         - ioScopes.replies: 
             Reads ioScopes.replies.value as a string, splits the contents (separator is `|||`) and returns the resulting dict. 
@@ -72,6 +78,7 @@ def ioRead(scope: ioScopes, target: str = None):
             - Returns file contents as a JSON object (if file format is JSON);
             - Returns file contents as a string (if file format is anything besides JSON).
             - `target` argument is required and must be the full file name.
+            - Special case: if `oai_credentials.txt` is missing, `None` is returned instead of raising an exception. This is a signal to simply disable LLM functionality downstream.
 
     Args:
         scope (ioScopes): Specifies the external file path or directory.
@@ -129,8 +136,12 @@ def ioRead(scope: ioScopes, target: str = None):
                 with open(f"{scope.value}{target}", "r") as file:
                     return json.load(file) if ".json" in target else file.read()
             except FileNotFoundError as e:
-                logging.warning(f"[ioRead, {scope.name}] File {scope.value}{target} not found!")
-                raise e
+                if target == "oai_credentials.txt":
+                    logging.warning(f"[ioRead, {scope.name}] OpenAI API key file not found! LLM replies are disabled.")
+                    return None
+                else:
+                    logging.warning(f"[ioRead, {scope.name}] File {scope.value}{target} not found!")
+                    raise e
 
         
         case _:
