@@ -3,8 +3,11 @@ from io_handler import ioScopes
 from io_handler import ioRead
 
 import datetime 
+import logging
 import random
+import time
 import sys
+import re
 
 # TODO: make it so that each time a keyword is replaced, a new value is generated and remove redundant keywords 
 
@@ -98,20 +101,25 @@ def generateEventList():
     pingId = ioRead(ioScopes.config, "zgrRolePing")
     template = ioRead(ioScopes.md, "event_gen_template.md")
 
-    return template.replace("!PING", pingId)\
+    template = template.replace("!PING", pingId)\
     .replace("!YEAR", str(year))\
     .replace("!WEEK", str(week_num))\
-    .replace("!TRACK2048", generateRandomTrack("2048"))\
-    .replace("!CLASS2048", generateRandomClass("2048"))\
-    .replace("!SHIP2048", generateRandomShip("2048"))\
-    .replace("!TRACKOMEGA", generateRandomTrack("hd"))\
-    .replace("!CLASSOMEGA", generateRandomClass("hd"))\
-    .replace("!SHIPOMEGA", generateRandomShip("hd"))\
-    .replace("!TRACKHD", generateRandomTrack("hd"))\
-    .replace("!CLASSHD", generateRandomClass("hd"))\
-    .replace("!SHIPHD", generateRandomShip("hd"))\
-    .replace("!ZONEOMEGA", generateRandomTrack("hdZone"))\
-    .replace("!ZONEHD", generateRandomTrack("hdZone"))\
-    .replace("!DETOOMEGA", generateRandomTrack("hdZone"))\
-    .replace("!DETOHD", generateRandomTrack("hdZone"))\
     .replace("!DEADLINE", f"<t:{getDeadlineTimestamp(week_num, year)}:R>")
+
+    timeoutCounter = 0
+    while re.search("![A-Z0-9]+", template):
+        template = template.replace("!TRACK2048", generateRandomTrack("2048"), 1)\
+        .replace("!CLASS2048", generateRandomClass("2048"), 1)\
+        .replace("!SHIP2048", generateRandomShip("2048"), 1)\
+        .replace("!TRACKHD", generateRandomTrack("hd"), 1)\
+        .replace("!CLASSHD", generateRandomClass("hd"), 1)\
+        .replace("!SHIPHD", generateRandomShip("hd"), 1)\
+        .replace("!ZONEHD", generateRandomTrack("hdZone"), 1)
+        timeoutCounter += 1
+        if timeoutCounter > 24:
+            logging.warning("[generateEventList] Exceeded maximum attempt counter, aborting...")
+            break
+        else:
+            time.sleep(0.1)
+
+    return template

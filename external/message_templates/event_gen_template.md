@@ -15,7 +15,7 @@ WipEout HD: !ZONEHD
 Best Score (PS3): *no entries yet*
 Best Score (Omega): *no entries yet*
 ### Detonator Mode:
-HD Detonator: !DETOHD
+HD Detonator: !ZONEHD
 Best Score (PS3): *no entries yet*
 Best Score (Omega): *no entries yet*
 

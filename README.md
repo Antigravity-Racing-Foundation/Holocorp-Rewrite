@@ -47,24 +47,21 @@ external
         - `!YEAR`: current year;
         - `!WEEK`: current week;
         - `!DEADLINE`: time left until the end of the current week 
-            * (Note: all timestamps keywords use the host system's timezone);
-        - `!TRACK...`: a random track from a game's pool of tracks available in normal race modes:
-            * `!TRACK2048` will return a WipEout 2048 track;
-            * `!TRACKHD` and `!TRACKOMEGA` will return different WipEout HD tracks.
-        - `!ZONE...`: a random track from a game's pool of tracks available in Zone race modes:
-            * `!ZONEHD` and `!ZONEOMEGA` will return different WipEout HD Zone tracks.
-        - `!DETO...`: a random track from a game's pool of tracks available in Zone race modes:
-            * `!DETOHD` and `!DETOOMEGA` will return different WipEout HD Zone tracks.
-        - `!SHIP...`: a random ship from a game's pool of available ships: 
-            * `!SHIP2048` will return a WipEout 2048 ship;
-            * `!SHIPHD` and `!SHIPOMEGA` will return different WipEout HD ships.
-        - `!CLASS...`: a random speed class from a game's pool of available speed classes:
-            * `!CLASS2048` will return a WipEout 2048 speed class;
-            * `!CLASSHD` and `!CLASSOMEGA` will return different WipEout HD speed classes.
-        - Note: each keyword will be replaced by one value even if it is used numerous times, which is the reason for seemingly redundant keywords. This may be seen as an oversight, and that's because it is :p (This will be fixed in the future.)
+            * Note: all time-related keywords use the host system's timezone;
+        - `!TRACK2048`: a random track from WipEout 2048's track roster.
+        - `!SHIP2048`: a random ship from WipEout 2048's ship roster.
+        - `!CLASS2048`: a random speed class available in WipEout 2048.
+        - `!TRACKHD`: a random track from WipEout HD's track roster, excluding Zone-specific tracks.
+        - `!ZONEHD`: a random track from WipEout HD's track roster, including Zone-specific tracks.
+        - `!SHIPHD`: a random ship from WipEout HD's ship roster.
+        - `!CLASSHD`: a random speed class available in WipEout HD.
+        - Notes: 
+            * Each keyword will be replaced by a unique random value (e.g. "!ZONEHD !ZONEHD" = "Syncopia Mallavol"); 
+            * Each keyword may only be used the maximum of 24 times; 
+            * Keywords not specified here or encountered after exceeding the maximum use count will be left intact.
 - `secrets` contains various API keys and client tokens. Files must contain just the secret with no newlines. Specific file names are requested by the program at runtime. In the current implementation, the program requests:
     * `credentials.txt`, which contains the Discord client token (must be present);
-    * `oai_credentials.txt`, which contains the OpenAI API key (must be present, even if OpenAI API won't be used. This is an oversight and will be fixed in the future. If you don't have an OpenAI API key, create the file but leave it empty.)
+    * `oai_credentials.txt`, which contains the OpenAI API key (must be present, even if OpenAI API won't be used. If you don't have an OpenAI API key, create the file but leave it empty.)
 ## How to run
 1. `$ git clone https://github.com/Antigravity-Racing-Foundation/Holocorp-Rewrite.git`;
 2. Provide the required `secrets` (see Configuration -> `secrets`);
