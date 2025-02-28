@@ -8,6 +8,7 @@
 
 from event_list_generate import generateRandomTrack
 from event_list_generate import generateEventList
+from event_list_generate import GameChoice
 
 from discord.ext.commands import MissingPermissions
 from discord import app_commands
@@ -216,9 +217,9 @@ async def trackgen(interaction: discord.Interaction, game: str, count: int = 1, 
 
     match game:
         case "hd":
-            trackRange = "hd" if extra_tracks == False else "hdZone"
+            trackRange = GameChoice.HD if extra_tracks == False else GameChoice.HDZONE
         case "pulse":
-            trackRange = "pulse" if extra_tracks == False else "pulseDLC"
+            trackRange = GameChoice.PULSE if extra_tracks == False else GameChoice.PULSEDLC
         case _:
             logging.debug("[trackgen] Invalid game argument passed... somehow?")
             await interaction.response.send_message(ephemeral=True, content="okay i'm sorry but how the fuck did you even manage to pick an invalid option?")

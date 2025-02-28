@@ -2,6 +2,7 @@
 from io_handler import ioScopes
 from io_handler import ioRead
 
+from enum import Enum, auto
 import datetime 
 import logging
 import random
@@ -9,82 +10,142 @@ import time
 import sys
 import re
 
-# TODO: make it so that each time a keyword is replaced, a new value is generated and remove redundant keywords 
+class GameChoice(Enum):
+    HD = auto()
+    HDZONE = auto()
+    W2048 = auto()
+    PULSE = auto()
+    PULSEDLC = auto()
 
-def generateRandomTrack(trackList):
-    random.seed()
-    trackBank = ["Vineta K", "Anulpha Pass", "Moa Therma", "Chenghou Project", 
-    "Metropia", "Sebenco Climb", "Ubermall", "Sol 2", 
-    "Talon's Junction", "Modesto Heights", "The Amphiseum", "Tech De Ra", # index 0-11, reversable
-    "Mallavol", "Corridon 12", "Pro Tozo", "Syncopia", # index 12-15-25, not reversable
-    "Empire Climb", "Altima", "Rockway Stadium", "Subway",
-    "Sol", "Unity Square", "Queens Mall", "Downtown", 
-    "Capital Reach", "Metro Park",
-    "Talon's Junction", "Moa Therma", "Metropia", "Arc Prime", # index 26-41, blackfaceable
-    "De Konstruct", "Tech De Ra", "The Amphiseum", "Fort Gale",     # i am aware that most of these are duplicated in
-    "Basilico", "Platinum Rush", "Vertica", "Outpost 7",            # the HD bank but i don't wanna fuck with that man
-    "Edgewinter", "Vostok Reef", "Gemini Dam", "Orcus"]
-    match trackList:
-        case "hd":
-            if random.getrandbits(1) == 1:
-                return trackBank[random.randint(0, 11)] + " Reverse"
-            else:
-                return trackBank[random.randint(0, 11)] + " Forward"
+def generateRandomTrack(game: GameChoice) -> str:
+    """
+    Return a random race track from a game's pool.
 
-        case "hdZone":
-            randomInt = random.randint(0, 15)
-            if randomInt < 12:
-
-                if random.getrandbits(1) == 1: # this looks messy but don't worry about it
-                    return trackBank[randomInt] + " Reverse"
-                else:
-                    return trackBank[randomInt] + " Forward"
-
-            else:
-                return trackBank[randomInt]
+    Args:
+        game (GameChoice): Specifies the pool:
+            - GameChoice.HD: Tracks available in normal race modes of WipEout HD;
+            - GameChoice.HDZONE: Tracks available in Zone-based modes of WipEout HD;
+            - GameChoice.W2048: Tracks available in WipEout 2048;
+            - GameChoice.PULSE: Tracks available in normal race modes of WipEout Pulse (Base game);
+            - GameChoice.PULSEDLC: Tracks available in normal race modes of WipEout Pulse (Base game + DLC);
+            - Note: "Unknown range" will be returned if the `game.name` value is unhandled.
         
-        case "2048":
-            return trackBank[random.randint(16, 25)] 
-        
-        case "pulse" | "pulseDLC":
-            indexEnd = 37 if trackList == "pulse" else 41
-            if random.getrandbits(1) == 1:
-                return trackBank[random.randint(26, indexEnd)] + " Black"
-            else:
-                return trackBank[random.randint(26, indexEnd)] + " White"
+    Returns: 
+        str: A random track from the specified pool.
+    """
+    match game.name:
+        case "HD" | "HDZONE":
+
+            trackBank = [
+                "Vineta K",         "Anulpha Pass",     "Moa Therma",       "Chenghou Project", 
+                "Metropia",         "Sebenco Climb",    "Ubermall",         "Sol 2", 
+                "Talon's Junction", "Modesto Heights",  "The Amphiseum",    "Tech De Ra"
+            ]
+
+            additionalTrackBank =   ["Mallavol", "Corridon 12", "Pro Tozo", "Syncopia"]
+            variantBank =           ["Forward", "Reverse"]     # my OCD knows no bounds
+
+            if game.name == "hd": randomTrack = random.choice(trackBank)
+            else: randomTrack = random.choice(trackBank + additionalTrackBank)
+
+            if randomTrack in additionalTrackBank: return randomTrack 
+            else: return f"{randomTrack} {random.choice(variantBank)}"
+
+        case "W2048":
+
+            trackBank = [
+                "Empire Climb",     "Altima",       "Rockway Stadium",  "Subway",
+                "Sol",              "Unity Square", "Queens Mall",      "Downtown", 
+                "Capital Reach",    "Metro Park"
+            ]
+
+            return random.choice(trackBank)
+
+        case "PULSE" | "PULSEDLC":
+
+            trackBank = [
+                "Talon's Junction", "Moa Therma",       "Metropia",         "Arc Prime",
+                "De Konstruct",     "Tech De Ra",       "The Amphiseum",    "Fort Gale",
+                "Basilico",         "Platinum Rush",    "Vertica",          "Outpost 7"
+            ]
+
+            additionalTrackBank =   ["Edgewinter", "Vostok Reef", "Gemini Dam", "Orcus"]
+            variantBank =           ["White", "Black"] # this is how everything is ordered ingame btw
+
+            if game.name == "pulse": realTrackBank = trackBank
+            else: realTrackBank = trackBank + additionalTrackBank
+
+            return f"{random.choice(realTrackBank)} {random.choice(variantBank)}"
+
+        case _:
+            return "Unknown range"
 
 
-def generateRandomClass(game):
-    random.seed() # i'm not actually sure if this does anything but yknow being safe and it doesn't hurt
-    classBank = ["Venom", "Flash", "Rapier", "Phantom", "C Class", "B Class", "A Class", "A+ Class"] # 0-3 hd 4-7 2048
+def generateRandomClass(game: GameChoice) -> str:
+    """
+    Return a random speed class from a game's pool.
 
-    match game:
-        case "hd":
-            return classBank[random.randint(0, 3)]
-        case "2048":
-            return classBank[random.randint(4, 7)]
+    Args:
+        game (GameChoice): Specifies the pool:
+            - GameChoice.HD, GameChoice.HDZONE, GameChoice.PULSE, GameChoice.PULSEDLC: Speed classes available in WipEout HD and WipEout Pulse.
+            - GameChoice.W2048: Speed classes available in WipEout 2048.
+            - Note: "Unknown range" will be returned if the `game.name` value is unhandled.
 
+    Returns: 
+        str: A random speed class from the specified pool.
+    """
+    match game.name:
+        case "HD" | "HDZONE" | "PULSE" | "PULSEDLC":
+            classBank = ["Venom", "Flash", "Rapier", "Phantom"]
+        case "W2048":
+            classBank = ["C Class", "B Class", "A Class", "A+ Class"]
+        case _:
+            return "Unknown range"
 
-def generateRandomShip(game):
-    random.seed()
-    teamBank = ["Piranha", "Assegai Developments", "Harimau", "Mirage",
-    "Triakis Industries", "Icaras", "Goteki 45", "EGX Technologies",
-    "Feisar", "AG-Systems", "Qirex", "Auricom", "Pir-hana"] # 0-11 hd, 8-12 2048
-
-    shipClassBank = [" Speed", " Agility", " Fighter", " Prototype"]
-
-    match game:
-        case "hd":
-            if random.getrandbits(1) == 1:
-                return teamBank[random.randint(0, 11)] + " [Fury]"
-            else:
-                return teamBank[random.randint(0, 11)] + " [HD]"
-        case "2048":
-            return teamBank[random.randint(8, 12)] + shipClassBank[random.randint(0, 3)]
+    return random.choice(classBank)
 
 
+def generateRandomShip(game: GameChoice) -> str:
+    """
+    Return a random ship from a game's pool.
 
-def getDeadlineTimestamp(week_num, year):
+    Args:
+        game (GameChoice): Specifies the pool:
+            - GameChoice.HD: Ships available in WipEout HD.
+            - GameChoice.W2048: Ships available in WipEout 2048.
+            - Note: "Unknown range" will be returned if the `game.name` value is unhandled.
+
+    Returns: 
+        str: A random ship from the specified pool.
+    """
+    match game.name:
+        case "HD":
+            teamBank = [
+                "Feisar",               "Qirex",        "Piranha",              "AG-Systems",
+                "Triakis Industries",   "Goteki 45",    "EG-X Technologies",    "Assegai Developments",
+                "Mirage",               "Harimau",      "Auricom",              "Icaras"
+            ]
+            typeBank = ["[HD]", "[Fury]"]
+        case "W2048":
+            teamBank = ["Feisar",   "AG-Systems",   "Qirex",     "Auricom",      "Pir-hana"  ]
+            typeBank = ["Speed",    "Agility",      "Fighter",   "Prototype"                 ]
+        case _:
+            return "Unknown range"
+
+    return f"{random.choice(teamBank)} {random.choice(typeBank)}"
+
+
+def getDeadlineTimestamp(week_num: int, year: int) -> int:
+    """
+    Return the timestamp of a week's end (Sunday, 11:59 PM).
+
+    Args:
+        week_num (int): The week's number in the year.
+        year (int): The year.
+
+    Returns:
+        int: The week's end (Sunday, 11:59 PM).
+    """
     firstDay = datetime.date(year, 1, 1)
     firstSunday = firstDay + datetime.timedelta(days=(6 - firstDay.weekday()) % 7)
     nextSunday = firstSunday + datetime.timedelta(weeks=week_num - 1)
@@ -94,7 +155,17 @@ def getDeadlineTimestamp(week_num, year):
     return unixTimestamp
 
 
-def generateEventList():
+def generateEventList() -> str:
+    """
+    Return a set of ZGR Weekly Time Trial events based on the template. 
+    See README.md -> Configuration -> `message_templates` -> `event_gen_template.md` for more information.
+
+    Args:
+        None.
+
+    Returns:
+        str: A set of ZGR Weekly Time Trial events.
+    """
     currentDateTime = datetime.date.today()
     year, week_num, day_of_week = currentDateTime.isocalendar()
 
@@ -108,13 +179,13 @@ def generateEventList():
 
     timeoutCounter = 0
     while re.search("![A-Z0-9]+", template):
-        template = template.replace("!TRACK2048", generateRandomTrack("2048"), 1)\
-        .replace("!CLASS2048", generateRandomClass("2048"), 1)\
-        .replace("!SHIP2048", generateRandomShip("2048"), 1)\
-        .replace("!TRACKHD", generateRandomTrack("hd"), 1)\
-        .replace("!CLASSHD", generateRandomClass("hd"), 1)\
-        .replace("!SHIPHD", generateRandomShip("hd"), 1)\
-        .replace("!ZONEHD", generateRandomTrack("hdZone"), 1)
+        template = template.replace("!TRACK2048", generateRandomTrack(GameChoice.W2048), 1)\
+        .replace("!CLASS2048", generateRandomClass(GameChoice.W2048), 1)\
+        .replace("!SHIP2048", generateRandomShip(GameChoice.W2048), 1)\
+        .replace("!TRACKHD", generateRandomTrack(GameChoice.HD), 1)\
+        .replace("!CLASSHD", generateRandomClass(GameChoice.HD), 1)\
+        .replace("!SHIPHD", generateRandomShip(GameChoice.HD), 1)\
+        .replace("!ZONEHD", generateRandomTrack(GameChoice.HDZONE), 1)
         timeoutCounter += 1
         if timeoutCounter > 24:
             logging.warning("[generateEventList] Exceeded maximum attempt counter, aborting...")
