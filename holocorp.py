@@ -142,7 +142,7 @@ async def status(interaction: discord.Interaction, status_command: str, reason: 
         if listLobbies.is_running(): listLobbies.stop()
 
         if reason:
-            firmStates.statusMessageText = ioRead(ioScopes.md, f"status_{firmStates.backendStatus}_with_reason.md").replace("!REASON", reason.capitalize())
+            firmStates.statusMessageText = ioRead(ioScopes.md, f"status_{firmStates.backendStatus}_with_reason.md").replace("!REASON", reason)
         else:
             firmStates.statusMessageText = ioRead(ioScopes.md, f"status_{firmStates.backendStatus}.md")
 
@@ -299,15 +299,30 @@ reply_choices = [
     app_commands.Choice(name="reload_reply_list", value="reload"),
     app_commands.Choice(name="set_next_reply", value="rig")
 ]
-@commandTree.command(name="reply_control", description="Change, reload or rig ping reply functionality", guild=None)
+@commandTree.command(name="reply_control", description="Change, reload or rig ping reply functionality (No arguments to see status)", guild=None)
 @app_commands.choices(action_command=reply_choices)
 @app_commands.default_permissions(permissions=0)
-async def replies(interaction: discord.Interaction, action_command: str, rigged_message: str = ""):
+async def replies(interaction: discord.Interaction, action_command: str = None, rigged_message: str = None):
+
+    logging.debug(f"[reply_control] Invoked with `action_command` = `{action_command}`, `rigged_message` = `{rigged_message}`")
+
+    if not action_command:
+        logging.debug(f"[reply_control] No `action_command` passed, reporting status...")
+
+        pingReplyFile = discord.File(io.BytesIO(str(volatileStates.pingReplies).replace("\', ", "\', \n")\
+        .replace("\", ", "\", \n").encode()), filename="list.txt")
+
+        await interaction.response.send_message(ephemeral=True, content=f"No arguments passed\n---\nReply states report\n\
+Ping reply type: `{volatileStates.pingReplyType}`\n\
+Rigged dumb reply: `{volatileStates.pingReplyRiggedMessage}`\n\
+Reply pool attached", file = pingReplyFile)
+        logging.debug(f"[reply_control] Sent")
+        return
 
     match action_command:
         case "disable":
             volatileStates.pingReplyType = "off"
-            await interaction.response.send_message(ephemeral=True, content=f"Ping replies are disabled now!`")
+            await interaction.response.send_message(ephemeral=True, content=f"Ping replies are disabled now!")
             return
 
         case "dumb":
@@ -328,7 +343,7 @@ async def replies(interaction: discord.Interaction, action_command: str, rigged_
             return
 
         case "rig":
-            if rigged_message == "":
+            if rigged_message == None:
                 await interaction.response.send_message(ephemeral=True, content=f"am i just supposed to be silent then? use `disable` for that, dummy")
                 return
             else:
@@ -485,6 +500,7 @@ async def on_ready():
     else:
         firmStates.statusMessageText = ioRead(ioScopes.md, "status_standby.md")
         await statusMessageHandler(firmStates.statusMessageText)
+    logging.info(f"[onReady] Done")
 
 
 
