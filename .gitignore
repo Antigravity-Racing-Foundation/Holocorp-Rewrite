@@ -8,3 +8,5 @@ Dockerfile
 entrypoint.sh
 build
 *.bak
+*.so
+*.h
