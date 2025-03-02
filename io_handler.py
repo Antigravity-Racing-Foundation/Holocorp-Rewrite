@@ -27,6 +27,7 @@ class configInitial():
         self.apiPollRate = 30
         self.apiLobbiesURL = "http://svo.agracingfoundation.org/medius_db/api/GetLobbyListing"
         self.apiPlayersURL = "http://svo.agracingfoundation.org/medius_db/api/GetPlayerCount"
+        self.trackgenDroppedTrackResetCount = 16
         self.pulsePlayerListPrefix = "   -> "
         self.pulseShowRegions = False
         self.platformLabelPSP = "(PSP)"

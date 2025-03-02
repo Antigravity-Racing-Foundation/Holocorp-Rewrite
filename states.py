@@ -62,7 +62,8 @@ class firmStateSet:
 
             "backendStatus": ioRead(ioScopes.config, "defaultBackendStatus"),
             "statusMessageText": None,
-            "channel": "None" # entrypoint states
+            "channel": "None",
+            "trackgenDroppedTrackResetCount": ioRead(ioScopes.config, "trackgenDroppedTrackResetCount") # entrypoint states
         }
         self.__dict__.update(self._defaults)
         self.statusMessageText = ioRead(ioScopes.md, f"status_{self.backendStatus}.md")

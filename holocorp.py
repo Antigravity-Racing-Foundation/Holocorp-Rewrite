@@ -242,9 +242,9 @@ async def trackgen(interaction: discord.Interaction, game: str, count: int = 1, 
             logging.debug("[trackgen] Exceeded maximum attempt count")
             trackList = f"{trackList}\n{generateRandomTrack(trackRange)}"
         
-        if len(volatileStates.trackGeneratorCache) > 6:
+        if len(volatileStates.trackGeneratorCache) > firmStates.trackgenDroppedTrackResetCount:
             volatileStates.trackGeneratorCache = []
-            logging.debug("[trackgen] Popping cache array (exceeded 6 elements)")
+            logging.debug(f"[trackgen] Popping cache array (exceeded {firmStates.trackgenDroppedTrackResetCount} elements)")
 
     if announce == True:
         logging.debug("[trackgen] Sending public response...")
