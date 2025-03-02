@@ -45,7 +45,7 @@ def generateRandomTrack(game: GameChoice) -> str:
             additionalTrackBank =   ["Mallavol", "Corridon 12", "Pro Tozo", "Syncopia"]
             variantBank =           ["Forward", "Reverse"]     # my OCD knows no bounds
 
-            if game.name == "hd": randomTrack = random.choice(trackBank)
+            if game.name == "HD": randomTrack = random.choice(trackBank)
             else: randomTrack = random.choice(trackBank + additionalTrackBank)
 
             if randomTrack in additionalTrackBank: return randomTrack 
@@ -72,7 +72,7 @@ def generateRandomTrack(game: GameChoice) -> str:
             additionalTrackBank =   ["Edgewinter", "Vostok Reef", "Gemini Dam", "Orcus"]
             variantBank =           ["White", "Black"] # this is how everything is ordered ingame btw
 
-            if game.name == "pulse": realTrackBank = trackBank
+            if game.name == "PULSE": realTrackBank = trackBank
             else: realTrackBank = trackBank + additionalTrackBank
 
             return f"{random.choice(realTrackBank)} {random.choice(variantBank)}"
