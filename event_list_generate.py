@@ -45,6 +45,14 @@ def generateRandomTrack(game: GameChoice) -> str:
             additionalTrackBank =   ["Mallavol", "Corridon 12", "Pro Tozo", "Syncopia"]
             variantBank =           ["Forward", "Reverse"]     # my OCD knows no bounds
 
+            # easter egg chance code, you can add trackBank values too if need be
+            if random.randint(0, 9) < 3:
+                for index, value in enumerate(additionalTrackBank):
+                    if value == "Syncopia":
+                        additionalTrackBank[index] = "Cyncopia"
+                    if value == "Corridon 12":
+                        additionalTrackBank[index] = "COLLIDON12"
+
             if game.name == "HD": randomTrack = random.choice(trackBank)
             else: randomTrack = random.choice(trackBank + additionalTrackBank)
 
