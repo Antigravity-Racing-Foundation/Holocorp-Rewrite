@@ -206,15 +206,21 @@ def fetchLobbyList():
     parsingResultsHD = ""
     parsingResultsPulse = ""
     raceProgress = ""
-    
+
+    try:
+        xmlHash = hashlib.sha1(xmlData.content).hexdigest() # calculate hash to not do same work more than once
+    except Exception as e:
+        logging.warning(f"[fetchLobbyList] Failed to calculate xmlHash with `{e}`, malformed XML?")
+        xmlHash = "None"
+
     try:
         #root = ET.fromstring(xmlOfflineData)
         root = ET.fromstring(xmlData.content)
     except ET.ParseError:
         logging.warning("[Lobby XML Parser] Bad XML passed")
+        volatileStates.hashAPILobby = xmlHash
         return "failureApiFault"
 
-    xmlHash = hashlib.sha1(xmlData.content).hexdigest() # calculate hash to not do same work more than once
     if xmlHash == volatileStates.hashAPILobby:
         logging.debug("[fetchLobbyList] New XML hash is the same as stored! Aborting...")
         return "nothingToDo"

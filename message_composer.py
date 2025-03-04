@@ -8,7 +8,7 @@ from states import firmStateSet
 from io_handler import ioScopes
 from io_handler import ioRead
 
-from logging import *
+import logging
 import string
 
 volatileStates = volatileStateSet()
@@ -17,6 +17,12 @@ firmStates = firmStateSet()
 def composeStatus():
 
     fetchedLobbyList = fetchLobbyList()
+
+    if "failureApiFault" in fetchedLobbyList:
+        firmStates.statusMessageText = ioRead(ioScopes.md, "status_failure.md")
+        logging.info("[composeStatus] Got a `failureApiFault`, setting status to `status_failure.md`")
+        return "failure"
+
     if fetchedLobbyList != "nothingToDo":
         volatileStates.lobbyListing = fetchedLobbyList  # this should ensure that we always have the current listing in memory and that it doesn't get
         volatileStates.lobbyListingIsSame = False       # overwritten when that's not needed
