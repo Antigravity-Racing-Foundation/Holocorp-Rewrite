@@ -76,7 +76,6 @@ def ioRead(scope: ioScopes, target: str = None):
             - Returns file contents as a JSON object (if file format is JSON);
             - Returns file contents as a string (if file format is anything besides JSON).
             - `target` argument is required and must be the full file name.
-            - Special case: if `oai_credentials.txt` is missing, `None` is returned instead of raising an exception. This is a signal to simply disable LLM functionality downstream.
 
     Args:
         scope (ioScopes): Specifies the external file path or directory.
@@ -134,12 +133,8 @@ def ioRead(scope: ioScopes, target: str = None):
                 with open(f"{scope.value}{target}", "r") as file:
                     return json.load(file) if ".json" in target else file.read()
             except FileNotFoundError as e:
-                if target == "oai_credentials.txt":
-                    logging.warning(f"[ioRead, {scope.name}] OpenAI API key file not found! LLM replies are disabled.")
-                    return None
-                else:
-                    logging.warning(f"[ioRead, {scope.name}] File {scope.value}{target} not found!")
-                    raise e
+                logging.warning(f"[ioRead, {scope.name}] File {scope.value}{target} not found!")
+                raise e
 
         
         case _:

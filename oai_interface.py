@@ -8,7 +8,12 @@ from openai import OpenAI
 import logging
 import json
 
-apiKey = ioRead(ioScopes.secret, "oai_credentials.txt")
+try:
+    apiKey = ioRead(ioScopes.secret, "oai_credentials.txt")
+except FileNotFoundError:
+    logging.info(f"[oai_interface Initialization] OAI secret file not found, LLM replies are disabled now.")
+    apiKey = None
+
 if apiKey:
     oai_client = OpenAI(api_key=apiKey)
 
@@ -65,7 +70,10 @@ def llmFetchResponse(message: str, author: str):
     newMessage = {"role": "user", "content": f"{author}: {message}"}
     llmStates.llmContext.append(newMessage)
 
-    logging.debug(f"[llmFetchResponse] New message is {message[:30]}...")
+    if len(message) > 30:
+        logging.debug(f"[llmFetchResponse] New message is [{message[:30]}...]")
+    else: # OCD
+        logging.debug(f"[llmFetchResponse] New message is [{message}]")
 
     modelResponse = oai_client.chat.completions.create(
         model="gpt-4o-mini",
