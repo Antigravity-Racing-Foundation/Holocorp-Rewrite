@@ -26,6 +26,8 @@ from states import llmStateSet
 from io_handler import ioScopes
 from io_handler import ioRead
 
+from db_handler import *
+
 from distutils.util import strtobool
 from pathlib import Path
 import datetime
@@ -390,7 +392,7 @@ async def reset(interaction: discord.Interaction, reset_command: str):
         #     firmStates.channel = client.get_channel(int(ioRead(ioScopes.config, "statusMessageChannelID")))
         #     await interaction.response.send_message(ephemeral=True, content=f"Wiped everything! Fresh stuff has been pulled from config and logic has been reset.")
         
-@activity.error
+@reset.error
 async def reset_error(interaction: discord.Interaction, error):
     if isinstance(error, discord.app_commands.errors.MissingPermissions):
         logging.info("[reset Command Error Handler] Invoke attempted by a peasant, but perms are missing lol")
@@ -422,11 +424,12 @@ if ioRead(ioScopes.config, "experimentalFeatures"):
             return
         await interaction.response.send_message(ephemeral=True, content=f"`{scope}.{name}` = `{returnValue}`")
 
-    @activity.error
+    @peek.error
     async def peek_error(interaction: discord.Interaction, error):
         if isinstance(error, discord.app_commands.errors.MissingPermissions):
             logging.info("[peek Command Error Handler] Invoke attempted by a peasant, but perms are missing lol")
             await interaction.response.send_message(ephemeral=True, content="You don't have the permission to do this")
+
 
 
 
@@ -449,7 +452,7 @@ if ioRead(ioScopes.config, "experimentalFeatures"):
         setattr(globals().get(scope), name, value)
         await interaction.response.send_message(ephemeral=True, content=f"Done! `{scope}.{name}` = `{str(value)}`")
 
-    @activity.error
+    @poke.error
     async def poke_error(interaction: discord.Interaction, error):
         if isinstance(error, discord.app_commands.errors.MissingPermissions):
             logging.info("[poke Command Error Handler] Invoke attempted by a peasant, but perms are missing lol")
@@ -458,16 +461,60 @@ if ioRead(ioScopes.config, "experimentalFeatures"):
 
 
 
-    # Problem: this doesn't hide the command from permless people :(
-    @commandTree.command(name="foo", description="foo", guild=None)
-    @app_commands.checks.has_role("Editor")
-    async def foo(interaction: discord.Interaction):
-        await interaction.response.send_message(ephemeral=True, content="Bar")
+    # warning: caffeinated coding binge below
+    db_action_choices = [
+        app_commands.Choice(name="get_topic_list", value="getTopics"),
+        app_commands.Choice(name="get_entries_by_topic", value="getEntriesByTopic"),
+        app_commands.Choice(name="get_entry_value", value="getEntry"),
+        app_commands.Choice(name="add_topic", value="addTopic"),
+        app_commands.Choice(name="add_entry", value="addEntry")
+    ]
 
-    @activity.error
-    async def foo_error(interaction: discord.Interaction, error):
+    @commandTree.command(name="databank", description="Bring forth knowledge and ludicity to our AI overlords", guild=None)
+    @app_commands.checks.has_role("Databank Editor")
+    @app_commands.choices(action=db_action_choices)
+    async def databank(interaction: discord.Interaction, action: str, topic: str = None, entry: str = None, entry_text: str = None):
+
+        if not topic and not entry and not entry_text and action == "addEntry":
+            await interaction.response.send_message(ephemeral=True, content="You must specify the `topic`, the `entry` and the `entry_text`")
+            return
+
+        if not topic and not entry and action == "getEntry":
+            await interaction.response.send_message(ephemeral=True, content="You must specify the `topic` and the `entry`")
+            return
+
+        if not topic and (action == "getEntriesByTopic" or action == "addTopic"):
+            await interaction.response.send_message(ephemeral=True, content="You must specify the `topic`")
+            return
+
+        match action:
+            case "getTopics":
+                await interaction.response.send_message(ephemeral=True, content=str(getTopics()))
+
+            case "getEntriesByTopic":
+                await interaction.response.send_message(ephemeral=True, content=str(getEntriesByTopic(topic)))
+
+            case "getEntry":
+                await interaction.response.send_message(ephemeral=True, content=str(getEntryContent(topic, entry)))
+            
+            case "addTopic":
+                try:
+                    addTopic(topic)
+                    await interaction.response.send_message(ephemeral=True, content="Done!")
+                except Exception as e:
+                    await interaction.response.send_message(ephemeral=True, content=f"Failed to add `{topic}` topic with \n```{e}```")
+                
+            case "addEntry":
+                try:
+                    addEntry(topic, entry, entry_text)
+                    await interaction.response.send_message(ephemeral=True, content="Done!")
+                except Exception as e:
+                    await interaction.response.send_message(ephemeral=True, content=f"Failed to add `{topic}` -> `{entry}` with \n```{e}```")
+
+    @databank.error
+    async def databank_error(interaction: discord.Interaction, error):
         if isinstance(error, discord.app_commands.errors.MissingRole):
-            logging.info("[foo Command Error Handler] Invoke attempted by a non-editor")
+            logging.info("[databank Command Error Handler] Invoke attempted by a non-editor")
             await interaction.response.send_message(ephemeral=True, content="You don't have the permission to do this")
 
 
