@@ -24,8 +24,16 @@ def initDB():
 
 def addTopic(topicName):
     """
-    Insert a new topic.
+    Insert a new topic into the database.
+
+    Args:
+        topicName (str): The name of the topic.
+
+    Returns:
+        None.
     
+    Raises:
+        ValueError: If creation of an existing topic is attempted.
     """
     conn = sqlite3.connect(firmStates.dbFilePath)
     cursor = conn.cursor()
@@ -40,7 +48,20 @@ def addTopic(topicName):
 
 
 def addEntry(topicName, entryName, entryText):
-    """Insert a new entry under a topic."""
+    """
+    Add a new entry into an existing topic.
+    
+    Args:
+        topicName (str): The name of the topic.
+        entryName (str): The name of the entry.
+        entryText (str): The contents of the entry.
+
+    Returns:
+        None.
+
+    Raises:
+        ValueError: If the specified `topicName` couldn't be found.
+    """
     conn = sqlite3.connect(firmStates.dbFilePath)
     cursor = conn.cursor()
 
@@ -67,7 +88,18 @@ def addEntry(topicName, entryName, entryText):
 
 
 def getTopics():
-    """Fetch all topics."""
+    """
+    Fetch all topics.
+
+    Args:
+        None.
+
+    Returns:
+        list: A list of dictionaries that contain the topics' ID's and names.
+
+    Raises:
+        None.
+    """
     conn = sqlite3.connect(firmStates.dbFilePath)
     cursor = conn.cursor()
     cursor.execute("SELECT * FROM topics;")
@@ -76,16 +108,27 @@ def getTopics():
     return [{"id": topic[0], "name": topic[1]} for topic in topics]
 
 
-def getEntriesByTopic(topicName):
-    """Fetch all entries under a specific topic."""
+def getEntriesByTopic(topicName: str) -> list:
+    """
+    Fetch all entries under a specific topic.
+    
+    Args:
+        topicName (str): The name of the topic.
+    
+    Returns:
+        list: A list of dictionaries that contain the entries' names and contents.
+
+    Raises:
+        ValueError: If the `topicName` couldn't be found.
+    """
     conn = sqlite3.connect(firmStates.dbFilePath)
     cursor = conn.cursor()
 
     cursor.execute("SELECT id FROM topics WHERE name = ?;", (topicName,))
     topic = cursor.fetchone()
     if not topic:
-        raise ValueError(f"[getEntriesByTopic] Topic {topicName} not found.")
         conn.close()
+        raise ValueError(f"[getEntriesByTopic] Topic {topicName} not found.")
         return []
 
     topicId = topic[0]
@@ -96,8 +139,20 @@ def getEntriesByTopic(topicName):
     return [{"name": entry[0], "text": entry[1]} for entry in entries]
 
 
-def getEntryContent(topicName, entryName):
-    """Fetch the description of a specific entry under a topic."""
+def getEntryContent(topicName: str, entryName: str) -> str:
+    """
+    Fetch the contents of a specific entry under a topic.
+    
+    Args:
+        topicName (str): The name of the topic.
+        entryName (str): The name of the entry.
+    
+    Returns:
+        str: The entry's contents.
+    
+    Raises:
+        None.
+    """
     conn = sqlite3.connect(firmStates.dbFilePath)
     cursor = conn.cursor()
 
