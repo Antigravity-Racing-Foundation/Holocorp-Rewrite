@@ -141,10 +141,6 @@ def llmFetchResponse(message: str, author: str):
             )
             finalResponse = modelResponseWithFunctionCall.choices[0].message.content
 
-            # remove old tool runs from context - FIXME removing all tool run context immediately isn't a good idea
-            # llmStates.llmContext.pop(len(llmStates.llmContext)-2)
-            # llmStates.llmContext.pop(len(llmStates.llmContext)-1)
-
     else: 
         finalResponse = modelResponse.choices[0].message.content
 
@@ -152,6 +148,14 @@ def llmFetchResponse(message: str, author: str):
 
     if len(llmStates.llmContext) > llmStates.llmContextPermanentEntryCount + llmStates.llmMaxUserMessageCount:
         logging.debug(f"[llmFetchResponse] Exceeded {llmStates.llmMaxUserMessageCount} user messages, popping the oldest...")
-        llmStates.llmContext.pop(llmStates.llmContextPermanentEntryCount)
+
+        for i in range (1,6):
+            llmStates.llmContext.pop(llmStates.llmContextPermanentEntryCount)
+            try:
+                role = llmStates.llmContext[llmStates.llmContextPermanentEntryCount]["role"]
+            except:
+                role = "assistant"
+            if role == "user":
+                break
 
     return finalResponse
