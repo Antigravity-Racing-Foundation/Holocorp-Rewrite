@@ -362,8 +362,8 @@ async def replies_error(interaction: discord.Interaction, error):
 
 reset_choices = [
     app_commands.Choice(name="partial", value="partial"),
-    app_commands.Choice(name="llm", value="llm"),
-    app_commands.Choice(name="full", value="full")
+    app_commands.Choice(name="llm", value="llm")
+    # app_commands.Choice(name="full", value="full")
 ]
 @commandTree.command(name="reset", description="Start from a clean slate", guild=None)
 @app_commands.choices(reset_command=reset_choices)
@@ -384,11 +384,11 @@ async def reset(interaction: discord.Interaction, reset_command: str):
             llmStates.reset()
             await interaction.response.send_message(ephemeral=True, content=f"LLM states reset!")
         
-        case "full":
-            volatileStates.reset()
-            firmStates.reset()
-            firmStates.channel = client.get_channel(int(ioRead(ioScopes.config, "statusMessageChannelID")))
-            await interaction.response.send_message(ephemeral=True, content=f"Wiped everything! Fresh stuff has been pulled from config and logic has been reset.")
+        # case "full":
+        #     volatileStates.reset()
+        #     firmStates.reset()
+        #     firmStates.channel = client.get_channel(int(ioRead(ioScopes.config, "statusMessageChannelID")))
+        #     await interaction.response.send_message(ephemeral=True, content=f"Wiped everything! Fresh stuff has been pulled from config and logic has been reset.")
         
 @activity.error
 async def reset_error(interaction: discord.Interaction, error):
