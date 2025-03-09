@@ -1,3 +1,7 @@
+from db_handler import getEntriesByTopic
+from db_handler import getEntryContent
+from db_handler import getTopics
+
 from states import volatileStateSet
 from states import llmStateSet
 
@@ -23,12 +27,17 @@ volatileStates = volatileStateSet()
 def getPostedLobbyListing():
     return volatileStates.statusMessageCache
 
-def databankLookup(topic):
-    match topic:
-        case "AGRF":
-            return "The AGRF is a group ran by the FX350 pilot community. Its coowners are ThatOneBonk (aka Yuri) and ChaCheeChoo (aka Exla)."
-        case "FX350":
-            return "FX350 is the official Antigravity Racing League backed by the Belmondo Foundation. 12 teams participate."
+if ioRead(ioScopes.config, "experimentalFeatures"):
+
+    def databankLookup(topic: str, entry: str) -> str:
+        entryContent = getEntryContent(topic, entry)
+        if not entryContent:
+            return "This entry within this topic does not exist."
+        return entryContent
+
+else:
+    def databankLookup():
+        return "Databank access is currently restricted."
 
 tools = [
     {
@@ -46,17 +55,22 @@ tools = [
         "type": "function",
         "function": {
             "name": "databankLookup",
-            "description": "Look up information stored in the databank for lore-related questions.",
+            "description": "Look up information stored in the databank for lore-related questions. If an entry doesn't exist within a topic, ask user for a clarification on what they mean.",
             "parameters": {
                 "type": "object",
                 "properties": {
                     "topic": {
                         "type": "string",
-                        "enum": ["AGRF", "FX350"],
-                        "description": "Specify which topic to look up information on. Pick the most relevant topic to the conversation.",
+                        "enum": volatileStates.dbTopicList,
+                        "description": "Specify which topic to look up information on. Pick the most relevant topic to the conversation and the entry you wish to look up.",
+                    },
+                    "entry": {
+                        "type": "string",
+                        "enum": volatileStates.dbEntriesList,
+                        "description": "Specify the entry you want information about. Pick the most relevant entry name to the conversation as well as the topic it likely belongs to.",
                     }
                 },
-                "required": ["topic"],
+                "required": ["topic", "entry"],
             },
         }
     },
@@ -98,9 +112,17 @@ def llmFetchResponse(message: str, author: str):
         match tool_function_name:
             case "getPostedLobbyListing":
                 results = getPostedLobbyListing()
+
             case "databankLookup":
-                tool_query_string = json.loads(tool_calls[0].function.arguments)['topic']
-                results = databankLookup(tool_query_string)
+                topic = json.loads(tool_calls[0].function.arguments)['topic']
+                entry = json.loads(tool_calls[0].function.arguments)['entry']
+
+                # this is so that if the model confuses a team for an organization, it's automatically corrected
+                if entry in volatileStates.dbTeamNames:
+                    topic = "Teams"
+
+                results = databankLookup(topic, entry)
+
             case _:
                 logging.warning(f"[llmFetchResponse function run] Function {tool_function_name} does not exist")
                 skipToolRun = True
@@ -120,8 +142,8 @@ def llmFetchResponse(message: str, author: str):
             finalResponse = modelResponseWithFunctionCall.choices[0].message.content
 
             # remove old tool runs from context - FIXME removing all tool run context immediately isn't a good idea
-            llmStates.llmContext.pop(len(llmStates.llmContext)-2)
-            llmStates.llmContext.pop(len(llmStates.llmContext)-1)
+            # llmStates.llmContext.pop(len(llmStates.llmContext)-2)
+            # llmStates.llmContext.pop(len(llmStates.llmContext)-1)
 
     else: 
         finalResponse = modelResponse.choices[0].message.content

@@ -1,0 +1,13 @@
+CREATE TABLE IF NOT EXISTS topics (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT UNIQUE NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS entries (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    topic_id INTEGER NOT NULL,
+    name TEXT NOT NULL,
+    text TEXT NOT NULL,
+    FOREIGN KEY (topic_id) REFERENCES topics (id),
+    UNIQUE (topic_id, name)
+);

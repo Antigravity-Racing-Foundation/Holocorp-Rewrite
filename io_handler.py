@@ -36,6 +36,8 @@ class configInitial():
         self.platformLabelVita = "(Vita)"
         self.platformLabelRPCS3 = "(RPCS3)"
         self.llmMaxUserMessageCount = 50
+        self.dbSchemaPath = "./external/databank/databank_schema.sql"
+        self.dbFilePath = "./external/databank/databank.db"
         self.experimentalFeatures = False
         self.loggingLevel = "Info"
 

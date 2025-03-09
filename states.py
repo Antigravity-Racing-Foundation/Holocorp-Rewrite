@@ -36,9 +36,33 @@ class volatileStateSet:
             "currentStatusAlreadyPosted": "None",
             "statusMessageCache": "None",
             "pingReplyCache": [],
-            "trackGeneratorCache": [] # entrypoint states
+            "trackGeneratorCache": [], # entrypoint states
+
+            "dbTopicList": None,
+            "dbEntriesList": None,
+            "dbTeamNames": None # databank states
         }
         self.__dict__.update(self._defaults)
+
+        from db_handler import getEntriesByTopic
+        from db_handler import getTopics
+
+        topicList = []
+        for entry in getTopics():
+            topicList.append(entry["name"])
+
+        # FIXME THIS IS HORRIBLE FOR PERFORMANCE
+        allEntries = []
+        teamEntries = []
+        for topic in topicList:
+            for entry in getEntriesByTopic(topic):
+                allEntries.append(entry["name"])
+                if topic == "Teams":
+                    teamEntries.append(entry["name"])
+
+        self.dbTopicList = topicList
+        self.dbEntriesList = allEntries
+        self.dbTeamNames = teamEntries
 
 @singleton
 class firmStateSet:
@@ -63,7 +87,10 @@ class firmStateSet:
             "backendStatus": ioRead(ioScopes.config, "defaultBackendStatus"),
             "statusMessageText": None,
             "channel": "None",
-            "trackgenDroppedTrackResetCount": ioRead(ioScopes.config, "trackgenDroppedTrackResetCount") # entrypoint states
+            "trackgenDroppedTrackResetCount": ioRead(ioScopes.config, "trackgenDroppedTrackResetCount"), # entrypoint states
+
+            "dbFilePath": ioRead(ioScopes.config, "dbFilePath"),
+            "dbSchemaPath": ioRead(ioScopes.config, "dbSchemaPath") # databank states
         }
         self.__dict__.update(self._defaults)
         self.statusMessageText = ioRead(ioScopes.md, f"status_{self.backendStatus}.md")

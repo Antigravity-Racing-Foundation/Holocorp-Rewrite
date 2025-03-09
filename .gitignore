@@ -1,11 +1,13 @@
-__pycache__/
+external/databank/databank.db
 
 external/config.json
 external/secrets
 
-Dockerfile
-.dockerignore
+__pycache__/
+
 entrypoint.sh
+.dockerignore
+Dockerfile
 build
 *.bak
 *.so
