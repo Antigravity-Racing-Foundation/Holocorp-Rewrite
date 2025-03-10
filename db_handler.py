@@ -1,8 +1,13 @@
+from difflib import unified_diff
+
 from states import firmStateSet
+
 from io_handler import ioScopes
 from io_handler import ioRead
+
 import sqlite3
 import logging
+import time
 import os
 
 def initDB():
@@ -15,6 +20,12 @@ def initDB():
     with open(firmStates.dbSchemaPath, "r") as file:
         schema = file.read()
 
+    logging.debug(f"[initDB] Schema path is {firmStates.dbSchemaPath}")
+    if schema:
+        logging.debug(f"[initDB] Schema fetched!")
+    else:
+        logging.debug(f"[initDB] Unable to fetch the scheme.")
+
     conn = sqlite3.connect(firmStates.dbFilePath)
     conn.executescript(schema)
     conn.commit()
@@ -22,37 +33,11 @@ def initDB():
     logging.info("[initDB] Database initialized")
 
 
-def addTopic(topicName):
+def addEntry(entryName, entryText):
     """
-    Insert a new topic into the database.
-
-    Args:
-        topicName (str): The name of the topic.
-
-    Returns:
-        None.
-    
-    Raises:
-        ValueError: If creation of an existing topic is attempted.
-    """
-    conn = sqlite3.connect(firmStates.dbFilePath)
-    cursor = conn.cursor()
-    try:
-        cursor.execute("INSERT INTO topics (name) VALUES (?);", (topicName,))
-        conn.commit()
-        logging.info(f"[addTopic] Added topic `{topicName}`")
-    except sqlite3.IntegrityError:
-        raise ValueError(f"[addTopic] Topic {topicName} already exists!")
-    finally:
-        conn.close()
-
-
-def addEntry(topicName, entryName, entryText):
-    """
-    Add a new entry into an existing topic.
+    Add a new entry into the databank.
     
     Args:
-        topicName (str): The name of the topic.
         entryName (str): The name of the entry.
         entryText (str): The contents of the entry.
 
@@ -60,91 +45,124 @@ def addEntry(topicName, entryName, entryText):
         None.
 
     Raises:
-        ValueError: If the specified `topicName` couldn't be found.
+        ValueError: if the entry already exists.
     """
     conn = sqlite3.connect(firmStates.dbFilePath)
     cursor = conn.cursor()
-
-    cursor.execute("SELECT id FROM topics WHERE name = ?;", (topicName,))
-    topic = cursor.fetchone()
-    if not topic:
-        raise ValueError(f"[addEntry] Topic `{topicName}` not found.")
-        conn.close()
-        return
-    
-    topicId = topic[0]
-
     try:
         cursor.execute(
-            "INSERT INTO entries (topic_id, name, text) VALUES (?, ?, ?);",
-            (topicId, entryName, entryText),
+            "INSERT INTO entries (name, text) VALUES (?, ?);",
+            (entryName, entryText),
         )
         conn.commit()
-        logging.info(f"[addEntry] `{entryName}` of `{topicName}` added!")
+        logging.info(f"[addEntry] `{entryName}` added!")
     except sqlite3.IntegrityError:
-        raise ValueError(f"[addEntry] `{entryName}` of `{topicName}` already exists.")
+        raise ValueError(f"[addEntry] `{entryName}` already exists.")
     finally:
         conn.close()
 
 
-def getTopics():
-    """
-    Fetch all topics.
+def editEntry(entryName: str, newText: str, editorID: str = "0"):
+    oldText = getEntryContent(entryName)
+    
+    diff = unified_diff(oldText.splitlines(), newText.splitlines(), lineterm='')
+    diff = "\n".join(list(diff))
 
+    if not diff:
+        diff = "[No changes...]"
+
+    timestamp = int(time.time())
+
+    if editorID == "0":
+        logging.info("[editEntry] Making an anonymous edit...")
+    else:
+        logging.info(f"[editEntry] `{editorID}` requested an edit...")
+
+    conn = sqlite3.connect(firmStates.dbFilePath)
+    cursor = conn.cursor()
+
+    query = """
+    UPDATE entries
+    SET text = ?
+    WHERE name = ?; 
+    """
+    cursor.execute(query, (newText, entryName,))
+
+    cursor.execute("""
+        SELECT entries.id FROM entries
+        WHERE entries.name = ?;""",
+        (entryName,)
+    )
+    entryID = cursor.fetchone()
+    if not entryID:
+        logging.error(f"[editEntry] Entry `{entryName}` not found!")
+        conn.close()
+        return
+    entryID = entryID[0]
+
+    cursor.execute(
+        "INSERT INTO edits (entry_id, editor, date, diff) VALUES (?, ?, ?, ?);",
+        (entryID, editorID, timestamp, diff,)
+    )
+
+    conn.commit()
+    conn.close()
+
+    logging.info(f"[editEntry] `{entryName}` edited by {editorID}.")
+
+
+# TODO review this, this isn't a good way of doing this
+def getEdits() -> list:
+    """
+    Fetch all edits of the databank.
+    
     Args:
         None.
-
+    
     Returns:
-        list: A list of dictionaries that contain the topics' ID's and names.
+        list: A list of edits that were made.
 
     Raises:
         None.
     """
     conn = sqlite3.connect(firmStates.dbFilePath)
     cursor = conn.cursor()
-    cursor.execute("SELECT * FROM topics;")
-    topics = cursor.fetchall()
+
+    cursor.execute("SELECT entry_id, editor, date, diff FROM edits;",)
+    entries = cursor.fetchall()
     conn.close()
-    return [{"id": topic[0], "name": topic[1]} for topic in topics]
+
+    return [{"entry_id": entry[0], "editor": entry[1], "date": entry[2], "diff": entry[3]} for entry in entries]
 
 
-def getEntriesByTopic(topicName: str) -> list:
+def getEntries() -> list:
     """
-    Fetch all entries under a specific topic.
+    Fetch all entries from the databank.
     
     Args:
-        topicName (str): The name of the topic.
+        None.
     
     Returns:
         list: A list of dictionaries that contain the entries' names and contents.
 
     Raises:
-        ValueError: If the `topicName` couldn't be found.
+        None.
     """
     conn = sqlite3.connect(firmStates.dbFilePath)
     cursor = conn.cursor()
 
-    cursor.execute("SELECT id FROM topics WHERE name = ?;", (topicName,))
-    topic = cursor.fetchone()
-    if not topic:
-        conn.close()
-        raise ValueError(f"[getEntriesByTopic] Topic {topicName} not found.")
-        return []
-
-    topicId = topic[0]
-    cursor.execute("SELECT name, text FROM entries WHERE topic_id = ?;", (topicId,))
+    cursor.execute("SELECT name, text FROM entries;",)
     entries = cursor.fetchall()
     conn.close()
 
     return [{"name": entry[0], "text": entry[1]} for entry in entries]
 
 
-def getEntryContent(topicName: str, entryName: str) -> str:
+def getEntryContent(entryName: str) -> str:
     """
-    Fetch the contents of a specific entry under a topic.
+    Fetch the contents of a specific entry.
     
     Args:
-        topicName (str): The name of the topic.
         entryName (str): The name of the entry.
     
     Returns:
@@ -158,15 +176,14 @@ def getEntryContent(topicName: str, entryName: str) -> str:
 
     query = """
     SELECT entries.text FROM entries
-    JOIN topics ON topics.id = entries.topic_id
-    WHERE topics.name = ? AND entries.name = ?;
+    WHERE entries.name = ?;
     """
-    cursor.execute(query, (topicName, entryName))
+    cursor.execute(query, (entryName,))
     entry = cursor.fetchone()
     conn.close()
 
     if not entry:
-        logging.info(f"[getEntryDescription] Unable to fetch entry `{entryName}` of topic `{topicName}`")
+        logging.info(f"[getEntryDescription] Unable to fetch entry `{entryName}`.")
         return None
     return entry[0]
 

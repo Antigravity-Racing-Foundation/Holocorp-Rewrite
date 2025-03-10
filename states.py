@@ -38,31 +38,20 @@ class volatileStateSet:
             "pingReplyCache": [],
             "trackGeneratorCache": [], # entrypoint states
 
-            "dbTopicList": None,
             "dbEntriesList": None,
-            "dbTeamNames": None # databank states
         }
         self.__dict__.update(self._defaults)
 
-        from db_handler import getEntriesByTopic
-        from db_handler import getTopics
+        from db_handler import getEntries
 
-        topicList = []
-        for entry in getTopics():
-            topicList.append(entry["name"])
+        entryList = []
+        entries = getEntries()
+        for entry in entries:
+            entryList.append(entry["name"])
 
-        # FIXME THIS IS HORRIBLE FOR PERFORMANCE
-        allEntries = []
-        teamEntries = []
-        for topic in topicList:
-            for entry in getEntriesByTopic(topic):
-                allEntries.append(entry["name"])
-                if topic == "Teams":
-                    teamEntries.append(entry["name"])
+        entryList.append("NoRelevantEntries")
 
-        self.dbTopicList = topicList
-        self.dbEntriesList = allEntries
-        self.dbTeamNames = teamEntries
+        self.dbEntriesList = entryList
 
 @singleton
 class firmStateSet:

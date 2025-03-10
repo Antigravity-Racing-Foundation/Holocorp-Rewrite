@@ -461,55 +461,41 @@ if ioRead(ioScopes.config, "experimentalFeatures"):
 
 
 
-    # warning: caffeinated coding binge below
     db_action_choices = [
-        app_commands.Choice(name="get_topic_list", value="getTopics"),
-        app_commands.Choice(name="get_entries_by_topic", value="getEntriesByTopic"),
-        app_commands.Choice(name="get_entry_value", value="getEntry"),
-        app_commands.Choice(name="add_topic", value="addTopic"),
-        app_commands.Choice(name="add_entry", value="addEntry")
+        app_commands.Choice(name="get_entries", value="getEntries"),
+        app_commands.Choice(name="get_entry_contents", value="getEntry"),
+        app_commands.Choice(name="add_entry", value="addEntry"),
+        app_commands.Choice(name="edit_entry", value="editEntry"),
+        app_commands.Choice(name="get_edits", value="getEdits")
     ]
 
     @commandTree.command(name="databank", description="Bring forth knowledge and ludicity to our AI overlords", guild=None)
     @app_commands.checks.has_role("Databank Editor")
     @app_commands.choices(action=db_action_choices)
-    async def databank(interaction: discord.Interaction, action: str, topic: str = None, entry: str = None, entry_text: str = None):
-
-        if not topic and not entry and not entry_text and action == "addEntry":
-            await interaction.response.send_message(ephemeral=True, content="You must specify the `topic`, the `entry` and the `entry_text`")
-            return
-
-        if not topic and not entry and action == "getEntry":
-            await interaction.response.send_message(ephemeral=True, content="You must specify the `topic` and the `entry`")
-            return
-
-        if not topic and (action == "getEntriesByTopic" or action == "addTopic"):
-            await interaction.response.send_message(ephemeral=True, content="You must specify the `topic`")
-            return
+    async def databank(interaction: discord.Interaction, action: str, entry: str = None, entry_contents: str = None):
 
         match action:
-            case "getTopics":
-                await interaction.response.send_message(ephemeral=True, content=str(getTopics()))
-
-            case "getEntriesByTopic":
-                await interaction.response.send_message(ephemeral=True, content=str(getEntriesByTopic(topic)))
-
+            case "getEntries":
+                await interaction.response.send_message(ephemeral=True, content=str(getEntries()))
             case "getEntry":
-                await interaction.response.send_message(ephemeral=True, content=str(getEntryContent(topic, entry)))
-            
-            case "addTopic":
-                try:
-                    addTopic(topic)
-                    await interaction.response.send_message(ephemeral=True, content="Done!")
-                except Exception as e:
-                    await interaction.response.send_message(ephemeral=True, content=f"Failed to add `{topic}` topic with \n```{e}```")
-                
+                await interaction.response.send_message(ephemeral=True, content=str(getEntryContent(entry)))
             case "addEntry":
                 try:
-                    addEntry(topic, entry, entry_text)
+                    addEntry(entryName = entry, entryText = entry_contents)
+                    await interaction.response.send_message(ephemeral=True, content="Done!")
+                except ValueError:
+                    await interaction.response.send_message(ephemeral=True, content="Entry already exists.")
+            case "editEntry":
+                try:
+                    editEntry(entryName = entry, newText = entry_contents, editorID = interaction.user.id)
                     await interaction.response.send_message(ephemeral=True, content="Done!")
                 except Exception as e:
-                    await interaction.response.send_message(ephemeral=True, content=f"Failed to add `{topic}` -> `{entry}` with \n```{e}```")
+                    await interaction.response.send_message(ephemeral=True, content=f"Failed with \n`{e}` \n:(")
+            case "getEdits":
+                # TODO this formatting is terrible
+                editsFile = discord.File(io.BytesIO(str(getEdits()).replace("}, ", "},\n").encode()), filename="edits.txt")
+                await interaction.response.send_message(ephemeral=True, content=f"Here you go:", file = editsFile)
+                
 
     @databank.error
     async def databank_error(interaction: discord.Interaction, error):

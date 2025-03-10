@@ -1,6 +1,5 @@
-from db_handler import getEntriesByTopic
+from db_handler import getEntries
 from db_handler import getEntryContent
-from db_handler import getTopics
 
 from states import volatileStateSet
 from states import llmStateSet
@@ -29,10 +28,15 @@ def getPostedLobbyListing():
 
 if ioRead(ioScopes.config, "experimentalFeatures"):
 
-    def databankLookup(topic: str, entry: str) -> str:
-        entryContent = getEntryContent(topic, entry)
+    def databankLookup(entry: str) -> str:
+        if entry == "NoRelevantEntries":
+            entryContent = "The databank doesn't have a relevant entry yet."
+        else:
+            entryContent = getEntryContent(entry)
+
         if not entryContent:
-            return "This entry within this topic does not exist."
+            return "The requested entry does not exist. Ask to notify a staff member."
+
         return entryContent
 
 else:
@@ -55,22 +59,17 @@ tools = [
         "type": "function",
         "function": {
             "name": "databankLookup",
-            "description": "Look up information stored in the databank for lore-related questions. If an entry doesn't exist within a topic, ask user for a clarification on what they mean.",
+            "description": "Look up information stored in the databank for lore-related questions. If there isn't a relevant entry in the databank, pick the respective option and admit to user.",
             "parameters": {
                 "type": "object",
                 "properties": {
-                    "topic": {
-                        "type": "string",
-                        "enum": volatileStates.dbTopicList,
-                        "description": "Specify which topic to look up information on. Pick the most relevant topic to the conversation and the entry you wish to look up.",
-                    },
                     "entry": {
                         "type": "string",
                         "enum": volatileStates.dbEntriesList,
-                        "description": "Specify the entry you want information about. Pick the most relevant entry name to the conversation as well as the topic it likely belongs to.",
+                        "description": "Specify the entry you want information about. Pick the most relevant entry name to the conversation.",
                     }
                 },
-                "required": ["topic", "entry"],
+                "required": ["entry"],
             },
         }
     },
@@ -114,14 +113,8 @@ def llmFetchResponse(message: str, author: str):
                 results = getPostedLobbyListing()
 
             case "databankLookup":
-                topic = json.loads(tool_calls[0].function.arguments)['topic']
                 entry = json.loads(tool_calls[0].function.arguments)['entry']
-
-                # this is so that if the model confuses a team for an organization, it's automatically corrected
-                if entry in volatileStates.dbTeamNames:
-                    topic = "Teams"
-
-                results = databankLookup(topic, entry)
+                results = databankLookup(entry)
 
             case _:
                 logging.warning(f"[llmFetchResponse function run] Function {tool_function_name} does not exist")
