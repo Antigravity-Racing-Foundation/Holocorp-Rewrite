@@ -10,5 +10,6 @@ entrypoint.sh
 Dockerfile
 build
 *.bak
+*.db
 *.so
 *.h

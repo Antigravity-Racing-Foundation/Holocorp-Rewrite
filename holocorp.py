@@ -466,7 +466,9 @@ if ioRead(ioScopes.config, "experimentalFeatures"):
         app_commands.Choice(name="get_entry_contents", value="getEntry"),
         app_commands.Choice(name="add_entry", value="addEntry"),
         app_commands.Choice(name="edit_entry", value="editEntry"),
-        app_commands.Choice(name="get_edits", value="getEdits")
+        app_commands.Choice(name="get_edits", value="getEdits"),
+        app_commands.Choice(name="remove_entry", value="removeEntry"),
+        app_commands.Choice(name="restore_entry", value="restoreEntry")
     ]
 
     @commandTree.command(name="databank", description="Bring forth knowledge and ludicity to our AI overlords", guild=None)
@@ -477,24 +479,60 @@ if ioRead(ioScopes.config, "experimentalFeatures"):
         match action:
             case "getEntries":
                 await interaction.response.send_message(ephemeral=True, content=str(getEntries()))
+
             case "getEntry":
                 await interaction.response.send_message(ephemeral=True, content=str(getEntryContent(entry)))
+
             case "addEntry":
+                if entry == None or entry_contents == None:
+                    await interaction.response.send_message(ephemeral=True, content="This operation requires the `entry` and the `entry_contents` arguments.")
+
                 try:
                     addEntry(entryName = entry, entryText = entry_contents)
                     await interaction.response.send_message(ephemeral=True, content="Done!")
                 except ValueError:
                     await interaction.response.send_message(ephemeral=True, content="Entry already exists.")
+
             case "editEntry":
+                if entry == None or entry_contents == None:
+                    await interaction.response.send_message(ephemeral=True, content="This operation requires the `entry` and the `entry_contents` arguments.")
+
                 try:
                     editEntry(entryName = entry, newText = entry_contents, editorID = interaction.user.id)
                     await interaction.response.send_message(ephemeral=True, content="Done!")
                 except Exception as e:
                     await interaction.response.send_message(ephemeral=True, content=f"Failed with \n`{e}` \n:(")
+
             case "getEdits":
-                # TODO this formatting is terrible
-                editsFile = discord.File(io.BytesIO(str(getEdits()).replace("}, ", "},\n").encode()), filename="edits.txt")
-                await interaction.response.send_message(ephemeral=True, content=f"Here you go:", file = editsFile)
+                if entry:
+                    edits = getEdits(entry)
+                else:
+                    edits = getEdits()
+
+                editsFormatted = ""
+
+                logging.debug(f"[databank, getEdits] Edits list is `{str(edits[:30])}...`")
+
+                for edit in edits:
+                    if edit[1] == 0:
+                        editorName = "Anonymous"
+                    else:
+                        editorName = str(await client.fetch_user(edit[1]))
+                        logging.debug(f"[databank, getEdits] Editor name is `{editorName}`")
+
+                    editsFormatted += (f"`{edit[0]}` - `{editorName}` at <t:{edit[2]}:f>:\n{edit[3]}\n\n====\n\n")
+
+                editsFile = discord.File(io.BytesIO(editsFormatted.removesuffix("\n\n====\n\n").encode()), filename="edits.txt")
+                await interaction.response.send_message(ephemeral=True, content="Here you go:", file=editsFile)
+
+            case "removeEntry" | "restoreEntry":
+                if entry == None:
+                    await interaction.response.send_message(ephemeral=True, content="This operation requires the `entry` argument.")
+
+                if action == "removeEntry": operation = Visibility.DELETE
+                else: operation = Visibility.RESTORE
+                changeEntryVisibility(entry, operation)
+                await interaction.response.send_message(ephemeral=True, content="Done!")
                 
 
     @databank.error

@@ -1,4 +1,3 @@
-from db_handler import getEntries
 from db_handler import getEntryContent
 
 from states import volatileStateSet
@@ -27,14 +26,13 @@ def getPostedLobbyListing():
     return volatileStates.statusMessageCache
 
 if ioRead(ioScopes.config, "experimentalFeatures"):
-
     def databankLookup(entry: str) -> str:
         if entry == "NoRelevantEntries":
             entryContent = "The databank doesn't have a relevant entry yet."
         else:
             entryContent = getEntryContent(entry)
 
-        if not entryContent:
+        if entryContent == "NoEntry" or entryContent == "EntryGone":
             return "The requested entry does not exist. Ask to notify a staff member."
 
         return entryContent
