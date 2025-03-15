@@ -468,7 +468,8 @@ if ioRead(ioScopes.config, "experimentalFeatures"):
         app_commands.Choice(name="edit_entry", value="editEntry"),
         app_commands.Choice(name="get_edits", value="getEdits"),
         app_commands.Choice(name="remove_entry", value="removeEntry"),
-        app_commands.Choice(name="restore_entry", value="restoreEntry")
+        app_commands.Choice(name="restore_entry", value="restoreEntry"),
+        app_commands.Choice(name="refresh_entries_for_llm", value="resetTools")
     ]
 
     @commandTree.command(name="databank", description="Bring forth knowledge and ludicity to our AI overlords", guild=None)
@@ -479,7 +480,7 @@ if ioRead(ioScopes.config, "experimentalFeatures"):
         match action:
             case "getEntries":
                 entries = getEntries()
-                response = "Entry titles currently in the databank:"
+                response = "Entry titles currently in the databank:\n\n"
 
                 for entry in entries:
                     response += f"- {entry["name"]}\n"
@@ -539,6 +540,10 @@ if ioRead(ioScopes.config, "experimentalFeatures"):
                 if action == "removeEntry": operation = Visibility.DELETE
                 else: operation = Visibility.RESTORE
                 changeEntryVisibility(entry, operation)
+                await interaction.response.send_message(ephemeral=True, content="Done!")
+
+            case "resetTools":
+                llmStates.tools_reset()
                 await interaction.response.send_message(ephemeral=True, content="Done!")
                 
 

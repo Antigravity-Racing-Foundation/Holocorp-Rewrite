@@ -98,6 +98,42 @@ class llmStateSet:
             "llmContext": llmInitialContext,
             "llmContextPermanentEntryCount": len(llmInitialContext),
             # max message count is multiplied by two such that it looks at message pairs, not individual messages
-            "llmMaxUserMessageCount": int(ioRead(ioScopes.config, "llmMaxUserMessageCount")) * 2
+            "llmMaxUserMessageCount": int(ioRead(ioScopes.config, "llmMaxUserMessageCount")) * 2,
+            "tools": None
         }
         self.__dict__.update(self._defaults)
+        self.tools_reset()
+    
+    def tools_reset(self):
+        volatileStates = volatileStateSet()
+        self.tools = [
+            {
+                "type": "function",
+                "function": {
+                    "name": "getPostedLobbyListing",
+                    "description": "Get the current list of pilots who are using Thallium+Beat.",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {}
+                    },
+                }
+            },
+            {
+                "type": "function",
+                "function": {
+                    "name": "databankLookup",
+                    "description": "Look up information stored in the databank for lore-related questions. If there isn't a relevant entry in the databank, pick the respective NoRelevantEntries option and admit to user. THIS INFORMATION MUST ONLY BE USED AS REFERENCE. WRITE CREATIVE REPLIES INSTEAD OF RECITING THE ENTRY'S CONTENTS.",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "entry": {
+                                "type": "string",
+                                "enum": volatileStates.dbEntriesList,
+                                "description": "Specify the entry you want information about. Pick the most relevant entry name to the conversation.",
+                            }
+                        },
+                        "required": ["entry"],
+                    },
+                }
+            },
+        ]

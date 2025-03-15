@@ -41,38 +41,6 @@ else:
     def databankLookup():
         return "Databank access is currently restricted."
 
-tools = [
-    {
-        "type": "function",
-        "function": {
-            "name": "getPostedLobbyListing",
-            "description": "Get the current list of pilots who are using Thallium+Beat.",
-            "parameters": {
-                "type": "object",
-                "properties": {}
-            },
-        }
-    },
-    {
-        "type": "function",
-        "function": {
-            "name": "databankLookup",
-            "description": "Look up information stored in the databank for lore-related questions. If there isn't a relevant entry in the databank, pick the respective option and admit to user.",
-            "parameters": {
-                "type": "object",
-                "properties": {
-                    "entry": {
-                        "type": "string",
-                        "enum": volatileStates.dbEntriesList,
-                        "description": "Specify the entry you want information about. Pick the most relevant entry name to the conversation.",
-                    }
-                },
-                "required": ["entry"],
-            },
-        }
-    },
-]
-
 def llmFetchResponse(message: str, author: str):
     
     if not "oai_client" in globals():
@@ -89,7 +57,7 @@ def llmFetchResponse(message: str, author: str):
     modelResponse = oai_client.chat.completions.create(
         model="gpt-4o-mini",
         messages=llmStates.llmContext,
-        tools=tools,
+        tools=llmStates.tools,
         tool_choice="auto"
     )
 
