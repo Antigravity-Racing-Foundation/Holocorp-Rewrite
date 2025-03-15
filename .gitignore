@@ -5,10 +5,10 @@ external/secrets
 
 __pycache__/
 
-entrypoint.sh
+entrypoint*
 .dockerignore
-Dockerfile
-build
+Dockerfile*
+build*
 *.bak
 *.db
 *.so
