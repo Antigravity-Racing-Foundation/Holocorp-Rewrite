@@ -478,7 +478,14 @@ if ioRead(ioScopes.config, "experimentalFeatures"):
 
         match action:
             case "getEntries":
-                await interaction.response.send_message(ephemeral=True, content=str(getEntries()))
+                entries = getEntries()
+                response = "Entry titles currently in the databank:"
+
+                for entry in entries:
+                    response += f"- {entry["name"]}\n"
+
+                responseFile = discord.File(io.BytesIO(response.encode()), filename="entries.txt")
+                await interaction.response.send_message(ephemeral=True, content="Here you go:", file=responseFile)
 
             case "getEntry":
                 await interaction.response.send_message(ephemeral=True, content=str(getEntryContent(entry)))
