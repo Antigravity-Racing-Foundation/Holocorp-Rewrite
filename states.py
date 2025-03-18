@@ -128,7 +128,7 @@ class llmStateSet:
                         "properties": {
                             "entry": {
                                 "type": "string",
-                                "enum": volatileStates.dbEntriesList,
+                                "enum": volatileStates.dbEntriesList, # mandates you to refresh volatileStates first, FIXME
                                 "description": "Specify the entry you want information about. Pick the most relevant entry name to the conversation.",
                             }
                         },

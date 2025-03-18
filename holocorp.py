@@ -472,7 +472,7 @@ if ioRead(ioScopes.config, "experimentalFeatures"):
         app_commands.Choice(name="refresh_entries_for_llm", value="resetTools")
     ]
 
-    @commandTree.command(name="databank", description="Bring forth knowledge and ludicity to our AI overlords", guild=None)
+    @commandTree.command(name="databank", description="Bring forth knowledge and lucidity to our AI overlords", guild=None)
     @app_commands.checks.has_role("Databank Editor")
     @app_commands.choices(action=db_action_choices)
     async def databank(interaction: discord.Interaction, action: str, entry: str = None, entry_contents: str = None):

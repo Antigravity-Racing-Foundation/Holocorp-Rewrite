@@ -75,7 +75,7 @@ def ioRead(scope: ioScopes, target: str = None):
 
         - ioScopes.md, ioScopes.llm, ioScopes.secret: 
             Reads `target` file at `ioScopes.*.value`:
-            - Returns file contents as a JSON object (if file format is JSON);
+            - Returns file contents as a dictionary (if file format is JSON);
             - Returns file contents as a string (if file format is anything besides JSON).
             - `target` argument is required and must be the full file name.
 
