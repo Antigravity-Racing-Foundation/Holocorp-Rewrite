@@ -4,8 +4,6 @@
 # TODO: pull as much ui text as possible from .md templates
 # TODO: event pre-ping feature
 
-# TODO: docstrings
-
 from event_list_generate import generateRandomTrack
 from event_list_generate import generateEventList
 from event_list_generate import GameChoice
@@ -109,6 +107,7 @@ async def statusMessageHandler(statusMessage): # decide what to post to updateSt
 
 
 
+# TODO add comment feature to online status
 status_choices = [
     app_commands.Choice(name="online", value="online"),
     app_commands.Choice(name="offline", value="offline"),
@@ -135,9 +134,9 @@ async def status(interaction: discord.Interaction, status_command: str, reason: 
         volatileStates.statusMessageCache = "None"
         volatileStates.hashAPILobby = "None"
         volatileStates.hashAPIPlayers = "None"
-        
+
         if not listLobbies.is_running(): listLobbies.start()
-        
+
         logging.debug("[status] Cleared cache and started lobby listing routine")
     else:
         firmStates.backendStatus = status_command
@@ -187,7 +186,7 @@ binary_options = [
     app_commands.Choice(name="False", value="False"),
 ]
 @commandTree.command(name="gimme_a_track", description="Gimme a random track, botty!", guild=None)
-@commands.cooldown(1, 10, commands.BucketType.user) 
+@commands.cooldown(1, 10, commands.BucketType.user)
 
 @app_commands.choices(game=game_choice)
 
@@ -226,7 +225,7 @@ async def trackgen(interaction: discord.Interaction, game: str, count: int = 1, 
             logging.debug("[trackgen] Invalid game argument passed... somehow?")
             await interaction.response.send_message(ephemeral=True, content="okay i'm sorry but how the fuck did you even manage to pick an invalid option?")
             return
-        
+
     logging.debug(f"[trackgen] Game is {trackRange}")
 
     trackList = ""
@@ -243,7 +242,7 @@ async def trackgen(interaction: discord.Interaction, game: str, count: int = 1, 
         else:
             logging.debug("[trackgen] Exceeded maximum attempt count")
             trackList = f"{trackList}\n{generateRandomTrack(trackRange)}"
-        
+
         if len(volatileStates.trackGeneratorCache) > firmStates.trackgenDroppedTrackResetCount:
             volatileStates.trackGeneratorCache = []
             logging.debug(f"[trackgen] Popping cache array (exceeded {firmStates.trackgenDroppedTrackResetCount} elements)")
@@ -340,7 +339,7 @@ Reply pool attached", file = pingReplyFile)
         case "reload":
             volatileStates.pingReplies = loadReplies()
             volatileStates.pingRepliesRigged= False
-            volatileStates.pingReplyRiggedMessage = "" 
+            volatileStates.pingReplyRiggedMessage = ""
             await interaction.response.send_message(ephemeral=True, content=f"Reply list loaded!")
             return
 
@@ -385,13 +384,13 @@ async def reset(interaction: discord.Interaction, reset_command: str):
         case "llm":
             llmStates.reset()
             await interaction.response.send_message(ephemeral=True, content=f"LLM states reset!")
-        
+
         # case "full":
         #     volatileStates.reset()
         #     firmStates.reset()
         #     firmStates.channel = client.get_channel(int(ioRead(ioScopes.config, "statusMessageChannelID")))
         #     await interaction.response.send_message(ephemeral=True, content=f"Wiped everything! Fresh stuff has been pulled from config and logic has been reset.")
-        
+
 @reset.error
 async def reset_error(interaction: discord.Interaction, error):
     if isinstance(error, discord.app_commands.errors.MissingPermissions):
@@ -417,7 +416,7 @@ if ioRead(ioScopes.config, "experimentalFeatures"):
             logging.debug(f"[peek] Failed to fetch {name} of {scope} with {e}")
             await interaction.response.send_message(ephemeral=True, content=f"Something went wrong! You've probably requested a bad value.\n{e}")
             return
-        
+
         if len(str(returnValue)) > 1000:
             returnValue = discord.File(io.BytesIO(str(returnValue).replace("},", "},\n").encode()), filename="trace.txt")
             await interaction.response.send_message(ephemeral=True, content="Output length exceeded 1000 characters...", file=returnValue)
@@ -445,7 +444,7 @@ if ioRead(ioScopes.config, "experimentalFeatures"):
                 value = bool(strtobool(value))
             except ValueError:
                 pass
-        
+
         if type(value) != type(getattr(globals().get(scope), name)):
             await interaction.response.send_message(ephemeral=True, content=f"Type of new {value} value doesn't match the type of `{scope}.{name}`\'s value, get a grip man")
 
@@ -545,7 +544,7 @@ if ioRead(ioScopes.config, "experimentalFeatures"):
             case "resetTools":
                 llmStates.tools_reset()
                 await interaction.response.send_message(ephemeral=True, content="Done!")
-                
+
 
     @databank.error
     async def databank_error(interaction: discord.Interaction, error):
@@ -620,7 +619,7 @@ async def on_message(message):
         if len(volatileStates.pingReplyCache) > 3: volatileStates.pingReplyCache = []
 
         await message.reply(replyCandidate.replace("!TARGETMESSAGE", targetMessage), mention_author=True)
-    
+
     elif client.user in message.mentions and volatileStates.pingReplyType == "smart":
         async with message.channel.typing():
             logging.debug(f"[onMessage] Passing \"{message.content}\" to the LLM...")

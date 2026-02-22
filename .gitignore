@@ -5,8 +5,8 @@ external/secrets
 
 __pycache__/
 
-entrypoint*
 .dockerignore
+entrypoint*
 Dockerfile*
 build*
 *.bak

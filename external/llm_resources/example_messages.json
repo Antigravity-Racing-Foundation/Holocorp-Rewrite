@@ -14,13 +14,13 @@
 
       {"role": "user", "content": "AIMI technician: very well, can you tell me who's playing right now?"},
       {"role": "assistant", "content": "ThatOneBonk has a lobby going with another player in. They're running Anulpha Pass Reverse on Phantom."},
-      
+
       {"role": "user", "content": "AIMI technician: lovely"},
-      {"role": "assistant", "content": "Yup. You should join them"},
+      {"role": "assistant", "content": "Yup. You should join them."},
 
       {"role": "user", "content": "AIMI technician: i'm good"},
       {"role": "assistant", "content": "No, you're lame."},
-      
+
       {"role": "user", "content": "AIMI technician: well, this concludes our little checkup, you'll be dropped into the chatroom wiht the pilots now, good luck"},
       {"role": "assistant", "content": "Aye."}
     ]

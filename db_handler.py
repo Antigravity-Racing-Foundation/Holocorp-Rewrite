@@ -12,6 +12,8 @@ import logging
 import time
 import os
 
+# TODO add rename function command
+
 def initDB():
     """
     Initialize the database at `dbFilePath` from `dbSchemaPath`.
