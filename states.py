@@ -16,17 +16,17 @@ def singleton(cls): # singleton boilerplate
 class volatileStateSet:
     def __init__(self):
         self.reset()
-    
+
     def reset(self):
         self._defaults = {
             "hashAPILobby": "None",
             "hashAPIPlayers": "None",
             "appId": "None",  # TODO: test if appId has to be a volatileState
-            "tourneyProgressByLobby": {}, # this dict will have lobby name as key, current race, last update and tourney finished flag
-            "tourneyProgressFunctionIsIdle": False, # parser states
+            "tourneyProgressByLobby": {}, # parser states
 
             "playerCountIsSame": False,
             "lobbyListingIsSame": False,
+            "playerListing": "None",
             "lobbyListing": "None", # message_composer states
 
             "pingReplyType": ioRead(ioScopes.config, "defaultPingReplyMode"),
@@ -71,7 +71,9 @@ class firmStateSet:
             "platformLabelPPSSPP": ioRead(ioScopes.config, "platformLabelPPSSPP"),
             "platformLabelPS3": ioRead(ioScopes.config, "platformLabelPS3"),
             "platformLabelVita": ioRead(ioScopes.config, "platformLabelVita"),
-            "platformLabelRPCS3": ioRead(ioScopes.config, "platformLabelRPCS3"), # parser states
+            "platformLabelRPCS3": ioRead(ioScopes.config, "platformLabelRPCS3"),
+            # TODO find a better way to load everything (load as JSON dict, then merge?)
+            "assemblerElements": ioRead(ioScopes.md, "lobby_formats/elements.json")[0], # parser states
 
             "backendStatus": ioRead(ioScopes.config, "defaultBackendStatus"),
             "statusMessageText": None,
@@ -103,7 +105,7 @@ class llmStateSet:
         }
         self.__dict__.update(self._defaults)
         self.tools_reset()
-    
+
     def tools_reset(self):
         volatileStates = volatileStateSet()
         self.tools = [

@@ -1,0 +1,13 @@
+[{
+    "separator": "//",
+    "inprogress_pulse": "**   >> RACE IN PROGRESS... HOLD ON! <<**\n-# ‎   When a Pulse race is ongoing, the lobby is hidden in-game. Please be patient!",
+    "inprogress_hd": "**   >> RACE IN PROGRESS <<**", 
+    "inprogress_hd_warn": "**   >> RACE IN PROGRESS... HOLD ON! <<**\n-# ‎   Due to a bug, Vita players will be kicked if someone joins mid-race. Please wait for the race to finish.",
+    "inprogress_hd_tourney": "**   >> TOURNEY IN PROGRESS <<**",
+    "inprogress_hd_tourney_warn": "**   >> TOURNEY IN PROGRESS... HOLD ON! <<**\n-# ‎   Due to a bug, Vita players will be kicked if someone joins mid-race. **Please wait for the tournament to finish!**",
+    "returning": "**   >> RETURNING TO LOBBY <<",
+    "returning_warn": "**   >> RETURNING TO LOBBY... HOLD ON! <<**\n-# ‎   Due to a bug, Vita players will be kicked if someone joins mid-race. **Please wait for the tournament to finish!**",
+    "loadout_standard": "Standard loadout",
+    "loadout_enabled": "__Enabled__",
+    "loadout_disabled": "__Disabled__"
+}]
