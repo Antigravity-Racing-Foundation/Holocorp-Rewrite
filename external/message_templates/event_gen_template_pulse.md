@@ -1,9 +1,4 @@
 !PING !YEAR Week !WEEK
-### WipEout 2048: 
-- !TRACK2048
-- !CLASS2048
-- Mandatory Ship: !SHIP2048
-- Fastest (Omega): *no entries yet*
 ### WipEout HD:
 - !TRACKHD
 - !CLASSHD
@@ -11,9 +6,9 @@
 - Fastest (PS3): *no entries yet*
 - Fastest (Omega): *no entries yet*
 ### WipEout Pulse:
-- !TRACKPULSE
-- !CLASSHD
-- Mandatory Ship: !SHIPPULSE
+- !TRACKPULSEDLC
+- !CLASSPULSE
+- Mandatory Ship: !SHIPPULSEDLC
 - Fastest: *no entries yet*
 ### Zone Mode:
 WipEout HD: !ZONEHD

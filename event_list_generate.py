@@ -3,7 +3,7 @@ from io_handler import ioScopes
 from io_handler import ioRead
 
 from enum import Enum, auto
-import datetime 
+import datetime
 import logging
 import random
 import time
@@ -12,6 +12,7 @@ import re
 
 class GameChoice(Enum):
     HD = auto()
+    HDDLC = auto()
     HDZONE = auto()
     W2048 = auto()
     PULSE = auto()
@@ -23,47 +24,48 @@ def generateRandomTrack(game: GameChoice) -> str:
 
     Args:
         game (GameChoice): Specifies the pool:
-            - GameChoice.HD: Tracks available in normal race modes of WipEout HD;
-            - GameChoice.HDZONE: Tracks available in Zone-based modes of WipEout HD;
+            - GameChoice.HD: Tracks available in WipEout HD without the Fury DLC;
+            - GameChoice.HDDLC: Tracks available in WipEout HD with the Fury DLC, excluding Zone tracks;
+            - GameChoice.HDZONE: Tracks available in WipEout HD with the Fury DLC, including Zone tracks;
             - GameChoice.W2048: Tracks available in WipEout 2048;
             - GameChoice.PULSE: Tracks available in normal race modes of WipEout Pulse (Base game);
             - GameChoice.PULSEDLC: Tracks available in normal race modes of WipEout Pulse (Base game + DLC);
             - Note: "Unknown range" will be returned if the `game.name` value is unhandled.
-        
-    Returns: 
+
+    Returns:
         str: A random track from the specified pool.
     """
     match game.name:
-        case "HD" | "HDZONE":
+        case "HD" | "HDZONE" | "HDDLC":
 
             trackBank = [
-                "Vineta K",         "Anulpha Pass",     "Moa Therma",       "Chenghou Project", 
-                "Metropia",         "Sebenco Climb",    "Ubermall",         "Sol 2", 
-                "Talon's Junction", "Modesto Heights",  "The Amphiseum",    "Tech De Ra"
+                "Vineta K",         "Anulpha Pass",     "Moa Therma",       "Chenghou Project",
+                "Metropia",         "Sebenco Climb",    "Ubermall",         "Sol 2",
             ]
 
-            additionalTrackBank =   ["Mallavol", "Corridon 12", "Pro Tozo", "Syncopia"]
-            variantBank =           ["Forward", "Reverse"]     # my OCD knows no bounds
+            dlcTrackBank =  ["Talon's Junction", "Modesto Heights", "The Amphiseum", "Tech De Ra"]
+            zoneTrackBank = ["Mallavol", "Corridon 12", "Pro Tozo", "Syncopia"]
+            variantBank =   ["Forward", "Reverse"]     # my OCD knows no bounds
 
-            # easter egg chance code, you can add trackBank values too if need be
             if random.randint(0, 9) < 3:
-                for index, value in enumerate(additionalTrackBank):
+                for index, value in enumerate(zoneTrackBank):
                     if value == "Syncopia":
-                        additionalTrackBank[index] = "Cyncopia"
+                        zoneTrackBank[index] = "Cyncopia"
                     if value == "Corridon 12":
-                        additionalTrackBank[index] = "COLLIDON12"
+                        zoneTrackBank[index] = "COLLIDON12"
 
             if game.name == "HD": randomTrack = random.choice(trackBank)
-            else: randomTrack = random.choice(trackBank + additionalTrackBank)
+            elif game.name =="HDDLC": randomTrack = random.choice(trackBank + dlcTrackBank)
+            else: randomTrack = random.choice(trackBank + dlcTrackBank + zoneTrackBank)
 
-            if randomTrack in additionalTrackBank: return randomTrack 
+            if randomTrack in zoneTrackBank: return randomTrack
             else: return f"{randomTrack} {random.choice(variantBank)}"
 
         case "W2048":
 
             trackBank = [
                 "Empire Climb",     "Altima",       "Rockway Stadium",  "Subway",
-                "Sol",              "Unity Square", "Queens Mall",      "Downtown", 
+                "Sol",              "Unity Square", "Queens Mall",      "Downtown",
                 "Capital Reach",    "Metro Park"
             ]
 
@@ -71,7 +73,7 @@ def generateRandomTrack(game: GameChoice) -> str:
 
         case "PULSE" | "PULSEDLC":
 
-            trackBank = [
+            baseTrackBank = [
                 "Talon's Junction", "Moa Therma",       "Metropia",         "Arc Prime",
                 "De Konstruct",     "Tech De Ra",       "The Amphiseum",    "Fort Gale",
                 "Basilico",         "Platinum Rush",    "Vertica",          "Outpost 7"
@@ -80,10 +82,10 @@ def generateRandomTrack(game: GameChoice) -> str:
             additionalTrackBank =   ["Edgewinter", "Vostok Reef", "Gemini Dam", "Orcus"]
             variantBank =           ["White", "Black"] # this is how everything is ordered ingame btw
 
-            if game.name == "PULSE": realTrackBank = trackBank
-            else: realTrackBank = trackBank + additionalTrackBank
+            if game.name == "PULSE": trackBank = baseTrackBank
+            else: trackBank = baseTrackBank + additionalTrackBank
 
-            return f"{random.choice(realTrackBank)} {random.choice(variantBank)}"
+            return f"{random.choice(trackBank)} {random.choice(variantBank)}"
 
         case _:
             return "Unknown range"
@@ -95,11 +97,11 @@ def generateRandomClass(game: GameChoice) -> str:
 
     Args:
         game (GameChoice): Specifies the pool:
-            - GameChoice.HD, GameChoice.HDZONE, GameChoice.PULSE, GameChoice.PULSEDLC: Speed classes available in WipEout HD and WipEout Pulse.
-            - GameChoice.W2048: Speed classes available in WipEout 2048.
-            - Note: "Unknown range" will be returned if the `game.name` value is unhandled.
+            - GameChoice.HD, GameChoice.HDZONE, GameChoice.PULSE, GameChoice.PULSEDLC: Speed classes available in WipEout HD and WipEout Pulse;
+            - GameChoice.W2048: Speed classes available in WipEout 2048;
+            - Note: "Unknown range" will be returned if the `game.name` value is unhandled;
 
-    Returns: 
+    Returns:
         str: A random speed class from the specified pool.
     """
     match game.name:
@@ -119,24 +121,43 @@ def generateRandomShip(game: GameChoice) -> str:
 
     Args:
         game (GameChoice): Specifies the pool:
-            - GameChoice.HD: Ships available in WipEout HD.
-            - GameChoice.W2048: Ships available in WipEout 2048.
-            - Note: "Unknown range" will be returned if the `game.name` value is unhandled.
+            - GameChoice.HD: Ships available in WipEout HD without the Fury DLC;
+            - GameChoice.HDDLC: Ships available in WipEout HD with the Fury DLC;
+            - GameChoice.W2048: Ships available in WipEout 2048;
+            - GameChoice.PULSE: Ships available in WipEout Pulse, excluding the DLC ships;
+            - GameChoice.PULSEDLC: Ships available in WipEout Pulse, including the DLC ships;
+            - Note: "Unknown range" will be returned if the `game.name` value is unhandled;
 
-    Returns: 
+    Returns:
         str: A random ship from the specified pool.
     """
+    teamBank = [""]
+    typeBank = [""]
     match game.name:
-        case "HD":
+        case "HD" | "HDDLC":
             teamBank = [
                 "Feisar",               "Qirex",        "Piranha",              "AG-Systems",
                 "Triakis Industries",   "Goteki 45",    "EG-X Technologies",    "Assegai Developments",
                 "Mirage",               "Harimau",      "Auricom",              "Icaras"
             ]
             typeBank = ["[HD]", "[Fury]"]
+
         case "W2048":
             teamBank = ["Feisar",   "AG-Systems",   "Qirex",     "Auricom",      "Pir-hana"  ]
             typeBank = ["Speed",    "Agility",      "Fighter",   "Prototype"                 ]
+
+        case "PULSE" | "PULSEDLC":
+            baseTeamBank = [
+                "Feisar",               "Qirex",        "Piranha",              "AG-Systems",
+                "Triakis Industries",   "Goteki 45",    "EG-X Technologies",    "Assegai Developments"
+            ]
+            additionalTeamBank = ["Mirage", "Harimau", "Auricom", "Icaras"]
+
+            if game.name == "PULSE": teamBank = baseTeamBank
+            else: teamBank = baseTeamBank + additionalTeamBank
+
+            typeBank = [""]
+
         case _:
             return "Unknown range"
 
@@ -165,7 +186,7 @@ def getDeadlineTimestamp(week_num: int, year: int) -> int:
 
 def generateEventList() -> str:
     """
-    Return a set of ZGR Weekly Time Trial events based on the template. 
+    Return a set of ZGR Weekly Time Trial events based on the template.
     See README.md -> Configuration -> `message_templates` -> `event_gen_template.md` for more information.
 
     Args:
@@ -179,6 +200,11 @@ def generateEventList() -> str:
 
     pingId = ioRead(ioScopes.config, "zgrRolePing")
     template = ioRead(ioScopes.md, "event_gen_template.md")
+    match int(week_num) % 2:
+        case 0:
+            template = ioRead(ioScopes.md, "event_gen_template_pulse.md")
+        case 1:
+            template = ioRead(ioScopes.md, "event_gen_template_2048.md")
 
     template = template.replace("!PING", pingId)\
     .replace("!YEAR", str(year))\
@@ -190,10 +216,17 @@ def generateEventList() -> str:
         template = template.replace("!TRACK2048", generateRandomTrack(GameChoice.W2048), 1)\
         .replace("!CLASS2048", generateRandomClass(GameChoice.W2048), 1)\
         .replace("!SHIP2048", generateRandomShip(GameChoice.W2048), 1)\
+\
         .replace("!TRACKHD", generateRandomTrack(GameChoice.HD), 1)\
         .replace("!CLASSHD", generateRandomClass(GameChoice.HD), 1)\
         .replace("!SHIPHD", generateRandomShip(GameChoice.HD), 1)\
-        .replace("!ZONEHD", generateRandomTrack(GameChoice.HDZONE), 1)
+        .replace("!ZONEHD", generateRandomTrack(GameChoice.HDZONE), 1)\
+\
+        .replace("!TRACKPULSEDLC", generateRandomTrack(GameChoice.PULSEDLC), 1)\
+        .replace("!TRACKPULSE", generateRandomTrack(GameChoice.PULSE), 1)\
+        .replace("!CLASSPULSE", generateRandomClass(GameChoice.PULSE), 1)\
+        .replace("!SHIPPULSEDLC", generateRandomShip(GameChoice.PULSEDLC), 1)\
+        .replace("!SHIPPULSE", generateRandomShip(GameChoice.PULSE), 1)
         timeoutCounter += 1
         if timeoutCounter > 24:
             logging.warning("[generateEventList] Exceeded maximum attempt counter, aborting...")
