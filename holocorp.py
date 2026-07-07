@@ -34,6 +34,7 @@ import discord
 import logging
 import asyncio
 import random
+import time
 import sys
 import re
 import os
@@ -53,7 +54,7 @@ class Client(discord.Client):
     async def setup_hook(self):
         await commandTree.sync()
 
-client = Client(intents=discord.Intents.default())
+client = Client(intents=intents)
 
 commandTree = app_commands.CommandTree(client)
 
@@ -65,6 +66,11 @@ except Exception as e:
     logging.getLogger().setLevel(logging.INFO)
     logging.error(f"Logging setup failed with {e}; defaulting to INFO")
 
+protectedRolesCache = ioRead(ioScopes.config, "protectedRoles")
+honeypotChanId = ioRead(ioScopes.config, "honeypotChanId")
+moderatorRoleId = ioRead(ioScopes.config, "moderatorRoleId")
+spamCooldown = int(ioRead(ioScopes.config, "spamCooldown"))
+suspectsList = []
 
 async def updateStatusMessage(desiredContent): # abstract of edit/send new message in status channel
 
@@ -572,6 +578,7 @@ async def listLobbies():
 @client.event
 async def on_ready():
     firmStates.channel = client.get_channel(int(ioRead(ioScopes.config, "statusMessageChannelID")))
+    firmStates.serviceChannel = await client.fetch_channel(int(ioRead(ioScopes.config, "serviceChanId")))
 
     await commandTree.sync(guild=discord.Object(id=int(ioRead(ioScopes.config, "guildID"))))
     logging.info('Login successful (in as {0.user})'.format(client))
@@ -595,6 +602,48 @@ async def on_message(message):
     if message.author.bot:
         logging.debug("[onMessage] Aborted, author is client")
         return
+
+    if message.channel.id == honeypotChanId:
+        try:
+            await message.author.ban(reason="clanker")
+
+            killMessage = f"Banned <@{message.author.id}> ({message.author.display_name}) for texting in honeypot channel <#{honeypotChanId}>"
+
+            logging.info(f"[onMessage] {killMessage}")
+            await firmStates.serviceChannel.send(f"<@&{moderatorRoleId}>{killMessage}")
+
+        except discord.errors.Forbidden:
+            logging.warning(f"[onMessage] Couldn't ban {message.author.display_name} because I don't have the permission")
+
+    if any(role in message.content for role in protectedRolesCache):
+        currentSuspect = message.author.id
+        currentTime = int(time.time())
+        currentChannelId = message.channel.id
+
+        suspectsList[:] = [s for s in suspectsList if s[1] + 60 >= currentTime]
+
+        checkedSuspects = []
+
+        for suspect in suspectsList:
+            if suspect[0] == currentSuspect:
+                if currentTime - spamCooldown < suspect[1] and suspect[2] != currentChannelId:
+                    try:
+                        await message.author.timeout(datetime.timedelta(hours=24), reason="clanker")
+
+                        killMessage = f"Muted <@{message.author.id}> ({message.author.display_name}) for spamming"
+                        logging.info(f"[onMessage] {killMessage}")
+                        await firmStates.serviceChannel.send(f"<@&{moderatorRoleId}>{killMessage}")
+
+                    except discord.errors.Forbidden:
+                        logging.warning(f"[onMessage] Couldn't mute {message.author.display_name} because I don't have the permission")
+                else:
+                    logging.debug(f"[onMessage] {message.author.display_name} did not meet the criteria for getting muted")
+                checkedSuspects.append(suspect)
+
+        for suspect in checkedSuspects:
+            suspectsList.remove(suspect)
+
+        suspectsList.append([currentSuspect, currentTime, currentChannelId])
 
     if client.user in message.mentions and volatileStates.pingReplyType == "dumb":
 

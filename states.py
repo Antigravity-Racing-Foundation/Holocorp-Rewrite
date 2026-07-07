@@ -16,7 +16,7 @@ def singleton(cls): # singleton boilerplate
 class volatileStateSet:
     def __init__(self):
         self.reset()
-    
+
     def reset(self):
         self._defaults = {
             "hashAPILobby": "None",
@@ -76,6 +76,7 @@ class firmStateSet:
             "backendStatus": ioRead(ioScopes.config, "defaultBackendStatus"),
             "statusMessageText": None,
             "channel": "None",
+            "serviceChannel": "None",
             "trackgenDroppedTrackResetCount": ioRead(ioScopes.config, "trackgenDroppedTrackResetCount"), # entrypoint states
 
             "dbFilePath": ioRead(ioScopes.config, "dbFilePath"),
@@ -103,7 +104,7 @@ class llmStateSet:
         }
         self.__dict__.update(self._defaults)
         self.tools_reset()
-    
+
     def tools_reset(self):
         volatileStates = volatileStateSet()
         self.tools = [

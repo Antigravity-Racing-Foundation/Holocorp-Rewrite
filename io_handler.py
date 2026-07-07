@@ -39,6 +39,11 @@ class configInitial():
         self.dbFilePath = "./external/databank/databank.db"
         self.experimentalFeatures = False
         self.loggingLevel = "Info"
+        self.protectedRoles = []
+        self.honeypotChanId = 0
+        self.serviceChanId = 0
+        self.moderatorRoleId = 0
+        self.spamCooldown = 20
 
 configInitialInstance = configInitial()
 
@@ -52,27 +57,27 @@ def configCreate():
 for entry in ioScopes:
     if not Path(entry.value).is_dir() and not Path(entry.value).is_file():
         logging.warning(f"[io_handler Setup] `{entry.value}` (`{entry.name}`) doesn't exist!")
-        if entry.name == "config": 
+        if entry.name == "config":
             configCreate()
         else:
             raise SystemExit(f"[io_handler] Please create `{entry.value}` and restart.")
 
 def ioRead(scope: ioScopes, target: str = None):
-    """ 
+    """
     Fetch data from an external file specified by the `scope`.
 
     This function behaves differently based on the `scope` passed:
-        - ioScopes.config: 
+        - ioScopes.config:
             Reads ioScopes.config.value as a JSON file and returns the requested key value (`target`) in its most appropriate format (str | int | bool).
             - `target` value is required and must be an existing key within the ioScopes.config.value JSON.
             - If `target` value isn't a valid key within ioScopes.config.value JSON, the function will attempt to load the key's default value.
             - If `target` value isn't in the initial configuration dictionary, the function will raise an exception.
 
-        - ioScopes.replies: 
-            Reads ioScopes.replies.value as a string, splits the contents (separator is `|||`) and returns the resulting dict. 
+        - ioScopes.replies:
+            Reads ioScopes.replies.value as a string, splits the contents (separator is `|||`) and returns the resulting dict.
             - `target` argument is ignored.
 
-        - ioScopes.md, ioScopes.llm, ioScopes.secret: 
+        - ioScopes.md, ioScopes.llm, ioScopes.secret:
             Reads `target` file at `ioScopes.*.value`:
             - Returns file contents as a dictionary (if file format is JSON);
             - Returns file contents as a string (if file format is anything besides JSON).
@@ -137,6 +142,6 @@ def ioRead(scope: ioScopes, target: str = None):
                 logging.warning(f"[ioRead, {scope.name}] File {scope.value}{target} not found!")
                 raise e
 
-        
+
         case _:
             logging.warning(f"[ioRead] Unknown scope: {scope}")
