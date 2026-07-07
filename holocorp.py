@@ -606,8 +606,10 @@ async def on_message(message):
     if message.channel.id == honeypotChanId:
         try:
             await message.author.ban(reason="clanker")
+            await asyncio.sleep(5)
+            await message.author.unban(reason="soft ban end")
 
-            killMessage = f"Banned <@{message.author.id}> ({message.author.display_name}) for texting in honeypot channel <#{honeypotChanId}>"
+            killMessage = f"Gave <@{message.author.id}> ({message.author.display_name}) a soft ban for texting in honeypot channel <#{honeypotChanId}>"
 
             logging.info(f"[onMessage] {killMessage}")
             await firmStates.serviceChannel.send(f"<@&{moderatorRoleId}>{killMessage}")
