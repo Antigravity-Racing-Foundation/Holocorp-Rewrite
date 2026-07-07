@@ -26,7 +26,8 @@ from io_handler import ioRead
 
 from db_handler import *
 
-from distutils.util import strtobool
+from strtobool import strtobool
+
 from pathlib import Path
 import datetime
 import discord
