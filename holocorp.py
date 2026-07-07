@@ -612,7 +612,7 @@ async def on_message(message):
             killMessage = f"Gave <@{message.author.id}> ({message.author.display_name}) a soft ban for texting in honeypot channel <#{honeypotChanId}>"
 
             logging.info(f"[onMessage] {killMessage}")
-            await firmStates.serviceChannel.send(f"<@&{moderatorRoleId}>{killMessage}")
+            await firmStates.serviceChannel.send(f"<@&{moderatorRoleId}> {killMessage}")
 
         except discord.errors.Forbidden:
             logging.warning(f"[onMessage] Couldn't ban {message.author.display_name} because I don't have the permission")
@@ -634,7 +634,7 @@ async def on_message(message):
 
                         killMessage = f"Muted <@{message.author.id}> ({message.author.display_name}) for spamming"
                         logging.info(f"[onMessage] {killMessage}")
-                        await firmStates.serviceChannel.send(f"<@&{moderatorRoleId}>{killMessage}")
+                        await firmStates.serviceChannel.send(f"<@&{moderatorRoleId}> {killMessage}")
 
                     except discord.errors.Forbidden:
                         logging.warning(f"[onMessage] Couldn't mute {message.author.display_name} because I don't have the permission")
