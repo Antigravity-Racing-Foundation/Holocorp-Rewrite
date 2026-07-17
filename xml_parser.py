@@ -67,7 +67,7 @@ def calculateTourneyProgress(raceProgress, raceTarget, raceCount, lobbyName, inc
     raceCount = int(raceCount)
     vitaWarningPostfix = ""
     vitaWarningPrefix = ""
-    
+
     volatileStates.tourneyProgressFunctionIsIdle = False
 
     currentRaceNumber, raceNumberAlreadyUpdated, lastTourneyDone = volatileStates.tourneyProgressByLobby.setdefault(lobbyName, (1, False, False))
@@ -88,7 +88,7 @@ def calculateTourneyProgress(raceProgress, raceTarget, raceCount, lobbyName, inc
         if currentRaceNumber > raceCount:
             lastTourneyDone = True # tourney end check
             currentRaceNumber -= 1 # this is kinda stupid but i like it :p
-    
+
     volatileStates.tourneyProgressByLobby[lobbyName] = (currentRaceNumber, raceNumberAlreadyUpdated, lastTourneyDone)
 
     if raceProgress == 0 and currentRaceNumber == 1:
@@ -99,7 +99,7 @@ def calculateTourneyProgress(raceProgress, raceTarget, raceCount, lobbyName, inc
 def calculateGameProgress(progress, target, includeVitaWarning):
     progress = int(progress)
     target = int(target)
-    
+
     vitaWarningPrefix, vitaWarningPostfix = (", HOLD ON!", \
     "\n-# ‎   Due to a bug, Vita players will be kicked if someone joins mid-race. Please wait for the race to finish.")\
     if includeVitaWarning else ("", "")
@@ -130,7 +130,7 @@ def convertTourneyTrackList(trackList, game, currentRaceNumber = -1):   # this f
 
         if trackParserCounter % 4 == 0 and trackParserCounter != 0:
             functionFinalOutput = f"{functionFinalOutput}]\n-# ‎   ["
-        
+
     functionFinalOutput = f"{functionFinalOutput}]"
     return functionFinalOutput.replace("[ | ", "[")\
     .replace("[]", "") # hacky formatting stuff :p
@@ -204,8 +204,10 @@ def fetchLobbyList():
     # except:
     #     logging.debug("[fetchLobbyList] Couldn't open the example XML, to be expected on production")
     parsingResultsHD = ""
+    parsingResults2048 = ""
     parsingResultsPulse = ""
     raceProgress = ""
+    sessionNumber2048 = 1
 
     try:
         xmlHash = hashlib.sha1(xmlData.content).hexdigest() # calculate hash to not do same work more than once
@@ -224,7 +226,7 @@ def fetchLobbyList():
     if xmlHash == volatileStates.hashAPILobby:
         logging.debug("[fetchLobbyList] New XML hash is the same as stored! Aborting...")
         return "nothingToDo"
-    else: 
+    else:
         volatileStates.hashAPILobby = xmlHash
         logging.debug("[fetchLobbyList] New XML hash is unique! It's stored in volatileStates now.")
 
@@ -245,10 +247,33 @@ def fetchLobbyList():
 
     for lobby in root.findall('Lobby'): # let's get xml'ing!!!! this loop will parse each lobby, put its properties into variables and compose it into a text block
         volatileStates.appId = lobby.attrib["AppId"] # the appId determines what game the parsing will be done for
-            
-        match volatileStates.appId:
-            case "23360": # this appId is for WipEout HD
 
+        match volatileStates.appId:
+            case "23360": # this appId is for WipEout HD and WipEout 2048
+
+
+                # ---###--- WIPEOUT 2048 PARSING START ---###---
+
+
+                propertyIsOC = lobby.attrib["IsOC"] == "true"
+                propertyPlayerCount = lobby.attrib["PlayerCount"]
+                propertyPlayerList = lobby.attrib["PlayerListCurrent"]
+
+                playerListPrintable = convertPlayerList(propertyPlayerList, "hd")
+
+                propertyCreateDate = lobby.attrib["GameCreateDt"]
+                dtObject = datetime.fromisoformat(propertyCreateDate.replace("Z", "+00:00"))
+                propertyCreateDate = int(dtObject.timestamp())
+
+                if propertyIsOC:
+
+                    hdLobbyBlock = f"**   WipEout 2048 Session {sessionNumber2048} ({propertyPlayerCount}/8)** \
+\n-# ‎   <t:{propertyCreateDate}:R>\
+{playerListPrintable}"
+
+                    sessionNumber2048 += 1
+                    parsingResults2048 = f"{parsingResults2048}\n{hdLobbyBlock}\n"
+                    continue
 
                 # ---###--- WIPEOUT HD PARSING START ---###---
 
@@ -260,29 +285,23 @@ def fetchLobbyList():
                 propertyTrack = convertGameLevelToName(lobby.attrib["GameLevel"])
                 propertyGameMode = convertRulesetToMode(lobby.attrib["RuleSet"])
                 propertySpeedClass, propertyDefaultLapCount = convertPlayerSkillToClass(lobby.attrib["PlayerSkillLevel"])
-                propertyPlayerList = lobby.attrib["PlayerListCurrent"]
                 propertyWeaponsEnabled = lobby.attrib["GenericField1"]
-                propertyPlayerCount = lobby.attrib["PlayerCount"]
-                propertyCreateDate = lobby.attrib["GameCreateDt"]
                 propertyMiscSettings = ""
-
-                dtObject = datetime.fromisoformat(propertyCreateDate.replace("Z", "+00:00"))
-                propertyCreateDate = int(dtObject.timestamp())
 
                 for stats in lobby.findall('GameStats'):
                     for config in stats:
-                        if config.tag == "HostName": propertyLobbyName = config.text 
-                        if config.tag == "LapCount": propertyLapCount = config.text 
-                        if config.tag == "ElimTarget": propertyElimTarget = config.text 
-                        if config.tag == "ZBTarget": propertyZBTarget = config.text 
-                        if config.tag == "RaceProgress": propertyRaceProgress = config.text 
+                        if config.tag == "HostName": propertyLobbyName = config.text
+                        if config.tag == "LapCount": propertyLapCount = config.text
+                        if config.tag == "ElimTarget": propertyElimTarget = config.text
+                        if config.tag == "ZBTarget": propertyZBTarget = config.text
+                        if config.tag == "RaceProgress": propertyRaceProgress = config.text
 
                     for miscStats in stats.findall("LobbyConfigSecondary"):
                         for miscConfig in miscStats:
                             if miscConfig.tag == "WeaponHints" and miscConfig.text == "0" and propertyWeaponsEnabled == "1": propertyMiscSettings = f"{propertyMiscSettings} // Hints Off"
-                            if miscConfig.tag == "BRsAllowed" and miscConfig.text == "0": propertyMiscSettings = f"{propertyMiscSettings} // BRs Off" 
+                            if miscConfig.tag == "BRsAllowed" and miscConfig.text == "0": propertyMiscSettings = f"{propertyMiscSettings} // BRs Off"
                             if miscConfig.tag == "PilotAssistAllowed" and miscConfig.text == "0" and propertyGameMode != "Zone Battle": propertyMiscSettings = f"{propertyMiscSettings} // PA Off"
-                    
+
                     for weaponsPrimary in stats.findall("WeaponsConfigPrimary"):
                         for weapon in weaponsPrimary:
                             propertyWeaponList.append(weapon.text)
@@ -298,8 +317,6 @@ def fetchLobbyList():
 
                 # this approach to paring the xml may not be the most optimal but it's much more readable than what we had before and
                 # it's also good enough performance-wise
-
-                playerListPrintable = convertPlayerList(propertyPlayerList, "hd")
 
                 if propertyDefaultLapCount == propertyLapCount:
                     listingLapCount = ""
@@ -371,7 +388,7 @@ def fetchLobbyList():
                     case _:
                         hdLobbyBlock = "\n! Parsing error.\n"
                         logging.warning("[fetchLobbyList] Error while parsing HD XML!")
-            
+
                 parsingResultsHD = f"{parsingResultsHD}\n{hdLobbyBlock}\n"
 
                 # ---###--- HD LOBBY DONE ---###---
@@ -448,14 +465,16 @@ def fetchLobbyList():
     if volatileStates.tourneyProgressFunctionIsIdle == True and volatileStates.tourneyProgressByLobby: # if tourneyProgressByLobby exists, that is
         volatileStates.tourneyProgressByLobby.clear()
 
-    if parsingResultsPulse == "" and parsingResultsHD != "":
-        return(f"\nLobby listing (HD):{parsingResultsHD}")
-    elif parsingResultsPulse != "" and parsingResultsHD == "":
-        return(f"\nLobby listing (Pulse):{parsingResultsPulse}")
-    elif parsingResultsHD == "" and parsingResultsPulse == "":
-        return "No lobbies are up."
-    else:
-        return(f"\nLobby listing (HD):{parsingResultsHD}\nLobby listing (Pulse):{parsingResultsPulse}")
+    lobbyFunctionOutput = ""
+
+    if parsingResultsHD:
+        lobbyFunctionOutput += (f"\nLobby listing (HD):{parsingResultsHD}")
+    if parsingResults2048:
+        lobbyFunctionOutput += (f"\nLobby listing (2048):{parsingResults2048}")
+    if parsingResultsPulse:
+        lobbyFunctionOutput += (f"\nLobby listing (Pulse):{parsingResultsPulse}")
+
+    return lobbyFunctionOutput or "No lobbies are up."
 
 def fetchPlayerCount():
     xmlData = requests.get(firmStates.urlCount)
@@ -466,13 +485,13 @@ def fetchPlayerCount():
     except ET.ParseError:
         logging.warning("[Player Count XML Parser] Bad XML passed")
         return "failureApiFault", None
-    
+
     playerCount = root.attrib["totalEntries"]
 
     xmlHash = hashlib.sha1(xmlData.content).hexdigest()
     if xmlHash == volatileStates.hashAPIPlayers:
         isSameFlag = True
-    else: 
+    else:
         volatileStates.hashAPIPlayers = xmlHash
 
     return ("1 player is currently logged in.", isSameFlag) if playerCount == "1" \
