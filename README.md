@@ -13,7 +13,7 @@ Holocorp Overview is a custom Discord bot written for the [AGRF Discord server](
     * Ability to generate a track or a list of tracks with customization of the track pool (`/gimme_a_track`);
 - Two chatbot capability implementations (`/reply_control`):
     * Dumb replies - get random phrases from a pool or rig the game by setting the next reply;
-    * LLM-powered replies (OpenAI interface implementation), with a powerful and robust databank system planned for rich and token-efficient lore knowledge!
+    * Smart replies - consider the original message content and reply based on that.
 ## Configuration
 Configuration data and resources are located in the `external` directory:
 ```
@@ -22,10 +22,6 @@ external
 ├── databank
 │   ├── databank.db
 │   └── databank_schema.sql
-├── llm_resources
-│   ├── example_messages.json
-│   ├── system_message.md
-│   └── system_message.md.bak
 ├── message_templates
 │   ├── event_gen_template.md
 │   ├── lobby_formats
@@ -54,8 +50,6 @@ external
     └── oai_credentialss.txt
 ```
 - `config.json` contains the bot's configuration options. If it is not present on startup, it will be created using the default values defined in `io_handler` -> `configInitial` (class) and execution will be stopped;
-- `databank` contains the files used by the LLM lore databank function (the database and the database schema).
-- `llm_resources` contains the system message and the example messages used by the LLM in the LLM replies chatbot mode. `system_message.md` doesn't require special formatting and is treated as a plain text file; `example_messages.json` must follow the correct structure (an example of which is included in the respective file in this repository);
 - `message_templates` contains various templates for the bot's output:
     * `lobby_formats` contains the templates used by the backend status reporting feature. See `Backend status listing` section for more details.
     * `ping_reply_list.md` is the random reply pool used by the dumb reply chatbot mode. Messages are separated using `|||` for newline support.
@@ -64,7 +58,6 @@ external
     * `event_gen_template.md` is the template used for ZGR Weekly Time Trial event list generation. It supports numerous keywords that are replaced with their respective values (see Event generation keywords section).
 - `secrets` contains various API keys and client tokens. Files must contain just the secret with no newlines. Specific file names are requested by the program at runtime. In the current implementation, the program requests:
     * `credentials.txt`, which contains the Discord client token (must be present);
-    * `oai_credentials.txt`, which contains the OpenAI API key (if not present, LLM features will be disabled.)
 ### Event generation keywords
 - `!PING`: <@ZGR Tournaments> Discord role ID as specified by `config.json` -> `zgrRolePing`; 
 - `!YEAR`: current year;
