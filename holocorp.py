@@ -13,20 +13,15 @@ from discord import app_commands
 from discord.ext import commands
 from discord.ext import tasks
 
-from oai_interface import llmFetchResponse
-
 from message_composer import composeStatus
 
 from states import volatileStateSet
 from states import firmStateSet
-from states import llmStateSet
+
+from str_to_bool import strtobool
 
 from io_handler import ioScopes
 from io_handler import ioRead
-
-from db_handler import *
-
-from strtobool import strtobool
 
 from pathlib import Path
 import datetime
@@ -42,7 +37,6 @@ import io
 
 volatileStates = volatileStateSet()
 firmStates = firmStateSet()
-llmStates = llmStateSet()
 
 intents = discord.Intents.default()
 intents.message_content = True
@@ -303,7 +297,6 @@ async def activity_error(interaction: discord.Interaction, error):
 reply_choices = [
     app_commands.Choice(name="disable", value="disable"),
     app_commands.Choice(name="dumb_replies", value="dumb"),
-    app_commands.Choice(name="llm_replies", value="smart"),
     app_commands.Choice(name="reload_reply_list", value="reload"),
     app_commands.Choice(name="set_next_reply", value="rig")
 ]
@@ -338,11 +331,6 @@ Reply pool attached", file = pingReplyFile)
             await interaction.response.send_message(ephemeral=True, content=f"Botty will reply with preset messages now!")
             return
 
-        case "smart":
-            volatileStates.pingReplyType = "smart"
-            await interaction.response.send_message(ephemeral=True, content=f"Botty will use the LLM now!")
-            return
-
         case "reload":
             volatileStates.pingReplies = loadReplies()
             volatileStates.pingRepliesRigged= False
@@ -369,8 +357,7 @@ async def replies_error(interaction: discord.Interaction, error):
 
 
 reset_choices = [
-    app_commands.Choice(name="partial", value="partial"),
-    app_commands.Choice(name="llm", value="llm")
+    app_commands.Choice(name="partial", value="partial")
     # app_commands.Choice(name="full", value="full")
 ]
 @commandTree.command(name="reset", description="Start from a clean slate", guild=None)
@@ -387,10 +374,6 @@ async def reset(interaction: discord.Interaction, reset_command: str):
         case "partial":
             volatileStates.reset()
             await interaction.response.send_message(ephemeral=True, content=f"Bot's volatile states reset!")
-
-        case "llm":
-            llmStates.reset()
-            await interaction.response.send_message(ephemeral=True, content=f"LLM states reset!")
 
         # case "full":
         #     volatileStates.reset()
@@ -410,8 +393,7 @@ async def reset_error(interaction: discord.Interaction, error):
 if ioRead(ioScopes.config, "experimentalFeatures"):
     scope_choices = [
         app_commands.Choice(name="volatile_states", value="volatileStates"),
-        app_commands.Choice(name="firm_states", value="firmStates"),
-        app_commands.Choice(name="llm_states", value="llmStates")
+        app_commands.Choice(name="firm_states", value="firmStates")
     ]
     @commandTree.command(name="peek", description="Take a look inside. Exciting!", guild=None)
     @app_commands.choices(scope=scope_choices)
@@ -462,101 +444,6 @@ if ioRead(ioScopes.config, "experimentalFeatures"):
     async def poke_error(interaction: discord.Interaction, error):
         if isinstance(error, discord.app_commands.errors.MissingPermissions):
             logging.info("[poke Command Error Handler] Invoke attempted by a peasant, but perms are missing lol")
-            await interaction.response.send_message(ephemeral=True, content="You don't have the permission to do this")
-
-
-
-
-    db_action_choices = [
-        app_commands.Choice(name="get_entries", value="getEntries"),
-        app_commands.Choice(name="get_entry_contents", value="getEntry"),
-        app_commands.Choice(name="add_entry", value="addEntry"),
-        app_commands.Choice(name="edit_entry", value="editEntry"),
-        app_commands.Choice(name="get_edits", value="getEdits"),
-        app_commands.Choice(name="remove_entry", value="removeEntry"),
-        app_commands.Choice(name="restore_entry", value="restoreEntry"),
-        app_commands.Choice(name="refresh_entries_for_llm", value="resetTools")
-    ]
-
-    @commandTree.command(name="databank", description="Bring forth knowledge and lucidity to our AI overlords", guild=None)
-    @app_commands.checks.has_role("Databank Editor")
-    @app_commands.choices(action=db_action_choices)
-    async def databank(interaction: discord.Interaction, action: str, entry: str = None, entry_contents: str = None):
-
-        match action:
-            case "getEntries":
-                entries = getEntries()
-                response = "Entry titles currently in the databank:\n\n"
-
-                for entry in entries:
-                    response += f"- {entry["name"]}\n"
-
-                responseFile = discord.File(io.BytesIO(response.encode()), filename="entries.txt")
-                await interaction.response.send_message(ephemeral=True, content="Here you go:", file=responseFile)
-
-            case "getEntry":
-                await interaction.response.send_message(ephemeral=True, content=str(getEntryContent(entry)))
-
-            case "addEntry":
-                if entry == None or entry_contents == None:
-                    await interaction.response.send_message(ephemeral=True, content="This operation requires the `entry` and the `entry_contents` arguments.")
-
-                try:
-                    addEntry(entryName = entry, entryText = entry_contents)
-                    await interaction.response.send_message(ephemeral=True, content="Done!")
-                except ValueError:
-                    await interaction.response.send_message(ephemeral=True, content="Entry already exists.")
-
-            case "editEntry":
-                if entry == None or entry_contents == None:
-                    await interaction.response.send_message(ephemeral=True, content="This operation requires the `entry` and the `entry_contents` arguments.")
-
-                try:
-                    editEntry(entryName = entry, newText = entry_contents, editorID = interaction.user.id)
-                    await interaction.response.send_message(ephemeral=True, content="Done!")
-                except Exception as e:
-                    await interaction.response.send_message(ephemeral=True, content=f"Failed with \n`{e}` \n:(")
-
-            case "getEdits":
-                if entry:
-                    edits = getEdits(entry)
-                else:
-                    edits = getEdits()
-
-                editsFormatted = ""
-
-                logging.debug(f"[databank, getEdits] Edits list is `{str(edits[:30])}...`")
-
-                for edit in edits:
-                    if edit[1] == 0:
-                        editorName = "Anonymous"
-                    else:
-                        editorName = str(await client.fetch_user(edit[1]))
-                        logging.debug(f"[databank, getEdits] Editor name is `{editorName}`")
-
-                    editsFormatted += (f"`{edit[0]}` - `{editorName}` at <t:{edit[2]}:f>:\n{edit[3]}\n\n====\n\n")
-
-                editsFile = discord.File(io.BytesIO(editsFormatted.removesuffix("\n\n====\n\n").encode()), filename="edits.txt")
-                await interaction.response.send_message(ephemeral=True, content="Here you go:", file=editsFile)
-
-            case "removeEntry" | "restoreEntry":
-                if entry == None:
-                    await interaction.response.send_message(ephemeral=True, content="This operation requires the `entry` argument.")
-
-                if action == "removeEntry": operation = Visibility.DELETE
-                else: operation = Visibility.RESTORE
-                changeEntryVisibility(entry, operation)
-                await interaction.response.send_message(ephemeral=True, content="Done!")
-
-            case "resetTools":
-                llmStates.tools_reset()
-                await interaction.response.send_message(ephemeral=True, content="Done!")
-
-
-    @databank.error
-    async def databank_error(interaction: discord.Interaction, error):
-        if isinstance(error, discord.app_commands.errors.MissingRole):
-            logging.info("[databank Command Error Handler] Invoke attempted by a non-editor")
             await interaction.response.send_message(ephemeral=True, content="You don't have the permission to do this")
 
 
@@ -671,11 +558,5 @@ async def on_message(message):
         if len(volatileStates.pingReplyCache) > 3: volatileStates.pingReplyCache = []
 
         await message.reply(replyCandidate.replace("!TARGETMESSAGE", targetMessage), mention_author=True)
-
-    elif client.user in message.mentions and volatileStates.pingReplyType == "smart":
-        async with message.channel.typing():
-            logging.debug(f"[onMessage] Passing \"{message.content}\" to the LLM...")
-            await message.reply(llmFetchResponse(str(message.content).replace(f"<@{client.user.id}>", "").lstrip(), message.author))
-            return
 
 client.run(ioRead(ioScopes.secret, "credentials.txt"))

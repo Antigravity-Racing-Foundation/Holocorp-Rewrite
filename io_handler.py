@@ -1,4 +1,4 @@
-# Guess from the file name what this is.
+from str_to_bool import strtobool
 from pathlib import Path
 from enum import Enum
 import logging
@@ -9,7 +9,6 @@ class ioScopes(Enum):
     config = "./external/config.json"
 
     md = "./external/message_templates/"
-    llm = "./external/llm_resources/"
     secret = "./external/secrets/"
 
 class configInitial():
@@ -34,7 +33,6 @@ class configInitial():
         self.platformLabelPS3 = "(PS3)"
         self.platformLabelVita = "(Vita)"
         self.platformLabelRPCS3 = "(RPCS3)"
-        self.llmMaxUserMessageCount = 50
         self.dbSchemaPath = "./external/databank/databank_schema.sql"
         self.dbFilePath = "./external/databank/databank.db"
         self.experimentalFeatures = False
@@ -77,7 +75,7 @@ def ioRead(scope: ioScopes, target: str = None):
             Reads ioScopes.replies.value as a string, splits the contents (separator is `|||`) and returns the resulting dict.
             - `target` argument is ignored.
 
-        - ioScopes.md, ioScopes.llm, ioScopes.secret:
+        - ioScopes.md, ioScopes.secret: 
             Reads `target` file at `ioScopes.*.value`:
             - Returns file contents as a dictionary (if file format is JSON);
             - Returns file contents as a string (if file format is anything besides JSON).
@@ -134,7 +132,7 @@ def ioRead(scope: ioScopes, target: str = None):
                 raise e
 
 
-        case "md" | "llm" | "secret":
+        case "md" | "secret":
             try:
                 with open(f"{scope.value}{target}", "r") as file:
                     return json.load(file) if ".json" in target else file.read()
