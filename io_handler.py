@@ -1,5 +1,4 @@
-# Guess from the file name what this is.
-from distutils.util import strtobool
+from str_to_bool import strtobool
 from pathlib import Path
 from enum import Enum
 import logging

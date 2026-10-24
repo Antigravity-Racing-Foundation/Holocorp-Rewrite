@@ -18,6 +18,8 @@ from message_composer import composeStatus
 from states import volatileStateSet
 from states import firmStateSet
 
+from str_to_bool import strtobool
+
 from io_handler import ioScopes
 from io_handler import ioRead
 
