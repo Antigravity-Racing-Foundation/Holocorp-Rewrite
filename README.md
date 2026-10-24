@@ -13,7 +13,7 @@ Holocorp Overview is a custom Discord bot written for the [AGRF Discord server](
     * Ability to generate a track or a list of tracks with customization of the track pool (`/gimme_a_track`);
 - Two chatbot capability implementations (`/reply_control`):
     * Dumb replies - get random phrases from a pool or rig the game by setting the next reply;
-    * LLM-powered replies (OpenAI interface implementation), with a powerful and robust databank system planned for rich and token-efficient lore knowledge!
+    * Smart replies - consider the original message content and reply based on that. Specify the triggers, replies and chances in `smart_replies.json`.
 ## Configuration
 Configuration data and resources are located in the `external` directory:
 ```
@@ -25,6 +25,7 @@ external
 ├── message_templates
 │   ├── event_gen_template.md
 │   ├── ping_reply_list.md
+│   ├── smart_replies.md
 │   ├── status_maintenance.md
 │   ├── status_maintenance_with_reason.md
 │   ├── status_offline.md

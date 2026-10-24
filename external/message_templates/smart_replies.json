@@ -1,0 +1,12 @@
+[
+    {
+        "trigger": "shibboleet",
+        "reply": "Example reply triggered. This had a 50% chance of firing!",
+        "chance": 50
+    },
+    {
+        "trigger": "botty",
+        "reply": "Second example reply triggered. This will always fire!",
+        "chance": 100
+    }
+]

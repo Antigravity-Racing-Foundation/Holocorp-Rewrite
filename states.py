@@ -32,6 +32,7 @@ class volatileStateSet:
             "pingReplyType": ioRead(ioScopes.config, "defaultPingReplyMode"),
             "pingRepliesRigged": False,
             "pingReplies": ioRead(ioScopes.replies),
+            "smartReplies": ioRead(ioScopes.md, "smart_replies.json"),
             "pingReplyRiggedMessage": "None",
             "currentStatusAlreadyPosted": "None",
             "statusMessageCache": "None",

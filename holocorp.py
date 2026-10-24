@@ -8,6 +8,8 @@ from event_list_generate import generateRandomTrack
 from event_list_generate import generateEventList
 from event_list_generate import GameChoice
 
+from reply_to_message import reply_smartly
+
 from discord.ext.commands import MissingPermissions
 from discord import app_commands
 from discord.ext import commands
@@ -533,6 +535,11 @@ async def on_message(message):
             suspectsList.remove(suspect)
 
         suspectsList.append([currentSuspect, currentTime, currentChannelId])
+        
+    chosenReply = reply_smartly(message.content)
+    if chosenReply:
+        await message.reply(chosenReply)
+        return
 
     if client.user in message.mentions and volatileStates.pingReplyType == "dumb":
 
