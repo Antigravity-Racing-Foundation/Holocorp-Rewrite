@@ -5,7 +5,7 @@
         "chance": 50
     },
     {
-        "trigger": "botty",
+        "trigger": "botty|||holo",
         "reply": "Second example reply triggered. This will always fire!",
         "chance": 100
     }

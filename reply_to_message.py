@@ -20,11 +20,11 @@ def reply_smartly(message: str) -> str | None:
     replies = volatileStateSet().smartReplies
 
     for replyRecipe in replies:
-        trigger = replyRecipe["trigger"]
+        triggers = replyRecipe["trigger"].split("|||")
         reply = replyRecipe["reply"]
         chance = replyRecipe["chance"]
 
-        if trigger in message.lower() and random.randrange(0,100) < chance:
+        if any(trigger.lower() in message.lower() for trigger in triggers) and random.randrange(0,100) < chance:
             return reply
 
     return None
