@@ -2,11 +2,31 @@
     {
         "trigger": "shibboleet",
         "reply": "Example reply triggered. This had a 50% chance of firing!",
+        "ignore_if_includes": "",
         "chance": 50
     },
     {
         "trigger": "botty|||holo",
         "reply": "Second example reply triggered. This will always fire!",
+        "ignore_if_includes": "",
+        "chance": 100
+    },
+    {
+        "trigger": "wipeout fusion",
+        "reply": "Third example reply triggered. This will fire when you talk about WipEout Fusion, but not poorly!",
+        "ignore_if_includes": "hate|||don't like",
+        "chance": 50
+    },
+    {
+        "trigger": "wipeout fusion",
+        "reply": "Fourth example reply triggered. By lowering the odds of a rule, and adding another one below, you can get random replies to the same trigger!",
+        "ignore_if_includes": "hate|||don't like",
+        "chance": 100
+    },
+    {
+        "trigger": "is anyone on|||who's on|||who's playing|||is there a lobby",
+        "reply": "<#1239671884568592424>",
+        "ignore_if_includes": "<@",
         "chance": 100
     }
 ]
