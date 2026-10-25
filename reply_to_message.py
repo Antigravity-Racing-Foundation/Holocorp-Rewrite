@@ -1,5 +1,6 @@
 from states import volatileStateSet
 
+import logging
 import random
 
 def reply_smartly(message: str) -> str | None:
@@ -18,6 +19,9 @@ def reply_smartly(message: str) -> str | None:
             If the message did not contain any remarkable content, returns None instead.
     """
 
+    logging.debug(f"[reply_smartly] Trying to reply to message `{message}`")
+
+    # FIXME this isn't optimized, would be better to store parsed items in volatileStates
     replies = volatileStateSet().smartReplies
 
     for replyRecipe in replies:
@@ -29,9 +33,13 @@ def reply_smartly(message: str) -> str | None:
         ]
         chance = replyRecipe["chance"]
 
+        logging.debug(f"[reply_smartly] Trying trigger `{replyRecipe["trigger"]}`")
+
         if random.randrange(0,100) < chance \
         and any(trigger.lower() in message.lower() for trigger in triggers) \
         and not any(exception.lower() in message.lower() for exception in exceptions):
+            logging.debug(f"[reply_smartly] Hit! Replying `{reply}`")
             return reply
 
+    logging.debug(f"[reply_smartly] No hits...")
     return None
